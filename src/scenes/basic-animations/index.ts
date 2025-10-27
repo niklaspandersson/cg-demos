@@ -1,4 +1,5 @@
-import { extractShaderProgramUrl } from "..";
+import fs from './fs.glsl?raw'
+import vs from './vs.glsl?raw'
 import { GLContext, GLScene, GLSLProgram } from "../../gl";
 
 export default class Scene implements GLScene {
@@ -6,8 +7,7 @@ export default class Scene implements GLScene {
   #speed: number = 1;
 
   async init(ctx: GLContext) {
-    const url = extractShaderProgramUrl(import.meta.url);
-    this.#program = await ctx.createProgram({ url })
+    this.#program = await ctx.createProgram({ fs, vs })
     const uniforms = this.#program.use()
     uniforms.uColor = [1, 0, 0];
   }

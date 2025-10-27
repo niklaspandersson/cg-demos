@@ -1,7 +1,7 @@
 export type BuildProps = {
   url?: string;
-  vertexShaderSource?: string,
-  fragmentShaderSource?: string
+  vs?: string,
+  fs?: string
 };
 
 export type VertexAttribute = "aPosition" | "aNormal" | "aColor" | "aTexCoord";
@@ -78,12 +78,12 @@ export class GLSLProgram {
     return this.#uniforms;
   }
 
-  async build({ url, vertexShaderSource, fragmentShaderSource }: BuildProps = {}) {
+  async build({ url, vs, fs }: BuildProps = {}) {
     const gl = this.#gl;
 
-    if (vertexShaderSource && fragmentShaderSource) {
-      this.#vertexShaderSource = vertexShaderSource;
-      this.#fragmentShaderSource = fragmentShaderSource;
+    if (vs && fs) {
+      this.#vertexShaderSource = vs;
+      this.#fragmentShaderSource = fs;
     }
     else {
       url ??= './'

@@ -1,7 +1,8 @@
+import fs from './fs.glsl?raw'
+import vs from './vs.glsl?raw'
 import { mat4 } from 'gl-matrix'
 import { GLContext, GLScene, GLSLProgram } from "../../gl";
 import { createCube } from '../../cube';
-import { extractShaderProgramUrl } from '..';
 
 export default class Scene implements GLScene {
   #program: GLSLProgram | null = null;
@@ -10,8 +11,7 @@ export default class Scene implements GLScene {
   #uColor: number[] = [1, 0, 0];
 
   async init(ctx: GLContext) {
-    const url = extractShaderProgramUrl(import.meta.url);
-    this.#program = await ctx.createProgram({ url })
+    this.#program = await ctx.createProgram({ fs, vs })
     const uniforms = this.#program.use()
 
     const { numElements } = createCube(ctx.gl, this.#program)
@@ -22,7 +22,7 @@ export default class Scene implements GLScene {
     uniforms.uProjectionMatrix = projectionMatrix
   }
 
-  renderFrame = (ctx: GLContext, dt: number, time: number) => {
+  renderFrame = (ctx: GLContext, _: number, time: number) => {
     const { gl } = ctx;
     let modelViewMatrix = mat4.create()
     mat4.translate(modelViewMatrix, modelViewMatrix, [0, 0, -2])

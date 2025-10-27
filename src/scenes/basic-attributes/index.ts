@@ -1,4 +1,5 @@
-import { extractShaderProgramUrl } from "..";
+import fs from './fs.glsl?raw'
+import vs from './vs.glsl?raw'
 import { GLContext, GLScene, GLSLProgram } from "../../gl";
 
 const vertexData = new Float32Array([
@@ -11,8 +12,7 @@ export default class Scene implements GLScene {
   #program: GLSLProgram | null = null;
 
   async init(ctx: GLContext) {
-    const url = extractShaderProgramUrl(import.meta.url);
-    this.#program = await ctx.createProgram({ url })
+    this.#program = await ctx.createProgram({ fs, vs })
     this.#program.use()
 
     const { gl } = ctx

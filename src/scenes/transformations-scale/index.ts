@@ -8,7 +8,7 @@ export default class Scene implements GLScene {
     this.#program = await ctx.createProgram({ url: 'scenes/transformation-simple-affine' })
   }
 
-  renderFrame = (ctx: GLContext, dt: number, time: number) => {
+  renderFrame = (ctx: GLContext, _: number, time: number) => {
     const { gl } = ctx;
     let translation: mat4 = mat4.create();
     const scale = 0.5 + 0.7 * (1 + Math.sin(time * 3)) / 2;

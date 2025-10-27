@@ -7,7 +7,7 @@ export default class Scene implements GLScene {
     this.#program = await ctx.createProgram({ url: 'scenes/transformation-simple-affine' })
   }
 
-  renderFrame = (ctx: GLContext, dt: number, time: number) => {
+  renderFrame = (ctx: GLContext, _: number, time: number) => {
     const { gl } = ctx;
     const { mat4 } = ctx.linalg;
     const t = time * this.#speed;

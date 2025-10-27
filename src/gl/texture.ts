@@ -18,7 +18,7 @@ export async function loadTexture(gl: WebGL2RenderingContext, url: string) {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
 
-        resolve(texture);
+        resolve(texture!);
       }
       catch (e) {
         reject(e);
