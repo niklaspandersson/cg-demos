@@ -22,6 +22,11 @@ export class GLContext {
     return this.#context;
   }
 
+  #programs: GLSLProgram[] = [];
+  get programs(): readonly GLSLProgram[] {
+    return this.#programs;
+  }
+
   get geometry() {
     return geometry;
   }
@@ -37,6 +42,7 @@ export class GLContext {
   async createProgram(opts: CreateProgramProps) {
     const program = new GLSLProgram(this.#context);
     await program.build(opts);
+    this.#programs.push(program);
     return program;
   }
 
@@ -72,5 +78,6 @@ export class GLContext {
   stopRendering() {
     if (this.#frameRequestId) cancelAnimationFrame(this.#frameRequestId);
     this.#frameRequestId = 0;
+    this.#programs = [];
   }
 }

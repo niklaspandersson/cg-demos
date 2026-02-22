@@ -4,6 +4,10 @@ export async function loadTexture(gl: WebGL2RenderingContext, url: string) {
     image.onload = function () {
       try {
         const texture = gl.createTexture();
+        if(!texture) {
+          reject(new Error("Failed to create texture"));
+          return;
+        }
         gl.bindTexture(gl.TEXTURE_2D, texture);
 
         const level = 0;
@@ -29,7 +33,7 @@ export async function loadTexture(gl: WebGL2RenderingContext, url: string) {
           gl.LINEAR_MIPMAP_LINEAR,
         );
 
-        resolve(texture!);
+        resolve(texture);
       } catch (e) {
         reject(e);
       }

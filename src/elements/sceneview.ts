@@ -1,4 +1,4 @@
-import { GLContext, GLScene } from "../gl";
+import { GLContext, GLScene, GLSLProgram } from "../gl";
 
 const template = document.createElement("template");
 template.innerHTML = `
@@ -44,7 +44,7 @@ export class GLSceneView extends HTMLElement {
     try {
       await scene.init(this.#ctx);
       this.#ctx.render(scene.renderFrame);
-      this.#dispatchSceneLoaded(scene);
+      this.#dispatchSceneLoaded(scene, this.#ctx.programs);
     } catch (e) {
       console.error(e);
       this.#ctx.stopRendering();
@@ -52,8 +52,13 @@ export class GLSceneView extends HTMLElement {
     }
   }
 
-  #dispatchSceneLoaded(scene: GLScene | null) {
-    this.dispatchEvent(new CustomEvent("scene-loaded", { detail: { scene } }));
+  #dispatchSceneLoaded(
+    scene: GLScene | null,
+    programs: readonly GLSLProgram[] = [],
+  ) {
+    this.dispatchEvent(
+      new CustomEvent("scene-loaded", { detail: { scene, programs } }),
+    );
   }
 }
 

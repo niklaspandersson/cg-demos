@@ -107,6 +107,7 @@ main {
         border-right: none;
         border-bottom: none;
         padding: 20px;
+        cursor: pointer;
 
         &.active {
           background-color: #eee;
