@@ -1,6 +1,11 @@
 import "./elements/sceneview.ts";
 import { toControl } from "./elements/controls.ts";
 import { GLScene, GLSLProgram } from "./gl/index.ts";
+import hljs from "highlight.js/lib/core";
+import glsl from "highlight.js/lib/languages/glsl";
+import "highlight.js/styles/github.css";
+
+hljs.registerLanguage("glsl", glsl);
 
 const sceneView: any = document.querySelector("scene-view");
 const sourcesDiv = document.querySelector<HTMLDivElement>(".sources");
@@ -9,6 +14,11 @@ const sourceCodeDiv = document.querySelector<HTMLDivElement>(".source-code");
 // sceneView?.setAttribute('scene', 'texturing-basics')
 
 let currentSources: Record<string, string> = {};
+
+function showSource(source: string) {
+  if (!sourceCodeDiv) return;
+  sourceCodeDiv.innerHTML = hljs.highlight(source, { language: "glsl" }).value;
+}
 
 function displayShaderSources(programs: readonly GLSLProgram[]) {
   if (!sourcesDiv || !sourceCodeDiv) return;
@@ -30,7 +40,7 @@ function displayShaderSources(programs: readonly GLSLProgram[]) {
   tabs.forEach((li) => {
     li.classList.toggle("active", li.dataset.shader === "fragment");
   });
-  sourceCodeDiv.textContent = currentSources.fragment;
+  showSource(currentSources.fragment);
 }
 
 sourcesDiv?.addEventListener("click", (e) => {
@@ -45,7 +55,7 @@ sourcesDiv?.addEventListener("click", (e) => {
   sourcesDiv.querySelectorAll<HTMLLIElement>(".tabs li").forEach((li) => {
     li.classList.toggle("active", li === target);
   });
-  sourceCodeDiv.textContent = currentSources[shaderType];
+  showSource(currentSources[shaderType]);
 });
 
 sceneView?.addEventListener("scene-loaded", (e: CustomEvent) => {
