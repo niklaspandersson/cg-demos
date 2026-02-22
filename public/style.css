@@ -88,41 +88,91 @@ main {
     }
   }
 
-  .sources {
+  shader-editor {
     flex-grow: 1;
     background-color: #eee;
 
-    header.tabs ul {
+    header.tabs {
       display: flex;
-      border-bottom: 1px solid #333;
-      list-style-type: none;
-      flex-direction: row;
-      border-collapse: collapse;
-      padding: 0;
-      margin: 0;
+      align-items: center;
+      justify-content: space-between;
 
-      li {
-        border: 1px solid #333;
-        background-color: #ddd;
-        border-right: none;
-        border-bottom: none;
-        padding: 20px;
-        cursor: pointer;
+      ul {
+        display: flex;
+        border-bottom: 1px solid #333;
+        list-style-type: none;
+        flex-direction: row;
+        border-collapse: collapse;
+        padding: 0;
+        margin: 0;
 
-        &.active {
-          background-color: #eee;
-        }
+        li {
+          border: 1px solid #333;
+          background-color: #ddd;
+          border-right: none;
+          border-bottom: none;
+          padding: 20px;
+          cursor: pointer;
 
-        &:last-child {
-          border-right: 1px solid #333;
+          &.active {
+            background-color: #eee;
+          }
+
+          &:last-child {
+            border-right: 1px solid #333;
+          }
         }
       }
     }
 
+    .source-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-right: 12px;
+    }
+
+    .source-status {
+      font-size: 0.8em;
+      font-weight: 600;
+      color: #b45309;
+      background-color: #fef3c7;
+      border: 1px solid #f59e0b;
+      border-radius: 4px;
+      padding: 2px 8px;
+    }
+
+    .reset-source {
+      font-size: 0.8em;
+      padding: 4px 10px;
+      border: 1px solid #999;
+      border-radius: 4px;
+      background-color: #f5f5f5;
+      cursor: pointer;
+
+      &:hover {
+        background-color: #e5e5e5;
+      }
+    }
+
     .source-code {
-      padding: 20px;
-      white-space: pre;
+      .cm-editor {
+        max-height: 400px;
+      }
+
+      .cm-scroller {
+        overflow: auto;
+      }
+    }
+
+    .shader-errors {
+      padding: 12px 16px;
+      background-color: #fef2f2;
+      border-top: 2px solid #ef4444;
+      color: #991b1b;
       font-family: monospace;
+      font-size: 0.85em;
+      white-space: pre-wrap;
     }
   }
 }

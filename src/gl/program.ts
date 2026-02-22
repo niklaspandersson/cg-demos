@@ -6,6 +6,18 @@ export type BuildProps = {
 
 export type VertexAttribute = "aPosition" | "aNormal" | "aColor" | "aTexCoord";
 
+const STANDARD_ATTRIB_LOCATIONS: Record<string, number> = {
+  aPosition: 0,
+  aNormal: 1,
+  aColor: 2,
+  aTexCoord: 3,
+};
+
+export type RebuildResult = {
+  success: boolean;
+  errors: string[];
+};
+
 export class GLSLProgram {
   #gl: WebGL2RenderingContext;
   #program: WebGLProgram;
@@ -98,14 +110,62 @@ export class GLSLProgram {
     if (!this.#vertexShaderSource || !this.#fragmentShaderSource)
       throw new Error("invalid parameters. No shader source code provided");
 
-    this.#attachShader(gl.VERTEX_SHADER, this.#vertexShaderSource);
-    this.#attachShader(gl.FRAGMENT_SHADER, this.#fragmentShaderSource);
+    this.#attachShader(this.#program, gl.VERTEX_SHADER, this.#vertexShaderSource);
+    this.#attachShader(this.#program, gl.FRAGMENT_SHADER, this.#fragmentShaderSource);
 
+    this.#bindStandardAttribLocations(this.#program);
     gl.linkProgram(this.#program);
     {
       const message = gl.getProgramInfoLog(this.#program);
       if (message?.length) throw new Error("Failed to link webgl program");
     }
+  }
+
+  rebuild({ vs, fs }: { vs?: string; fs?: string } = {}): RebuildResult {
+    const gl = this.#gl;
+    const newVs = vs ?? this.#vertexShaderSource;
+    const newFs = fs ?? this.#fragmentShaderSource;
+    const errors: string[] = [];
+
+    const newProgram = gl.createProgram();
+    if (!newProgram) return { success: false, errors: ["Failed to create program"] };
+
+    const vsShader = this.#compileShader(gl.VERTEX_SHADER, newVs);
+    if (!vsShader.shader) {
+      errors.push("Vertex: " + vsShader.error);
+    }
+
+    const fsShader = this.#compileShader(gl.FRAGMENT_SHADER, newFs);
+    if (!fsShader.shader) {
+      errors.push("Fragment: " + fsShader.error);
+    }
+
+    if (errors.length) {
+      if (vsShader.shader) gl.deleteShader(vsShader.shader);
+      if (fsShader.shader) gl.deleteShader(fsShader.shader);
+      gl.deleteProgram(newProgram);
+      return { success: false, errors };
+    }
+
+    gl.attachShader(newProgram, vsShader.shader!);
+    gl.attachShader(newProgram, fsShader.shader!);
+    this.#bindStandardAttribLocations(newProgram);
+    gl.linkProgram(newProgram);
+
+    const linkLog = gl.getProgramInfoLog(newProgram);
+    if (linkLog?.length) {
+      gl.deleteShader(vsShader.shader!);
+      gl.deleteShader(fsShader.shader!);
+      gl.deleteProgram(newProgram);
+      return { success: false, errors: ["Link: " + linkLog] };
+    }
+
+    gl.deleteProgram(this.#program);
+    this.#program = newProgram;
+    this.#vertexShaderSource = newVs;
+    this.#fragmentShaderSource = newFs;
+
+    return { success: true, errors: [] };
   }
 
   getAttribLocations(names: VertexAttribute[]) {
@@ -127,16 +187,31 @@ export class GLSLProgram {
     return res.ok ? await res.text() : "";
   }
 
-  #attachShader(type: GLenum, source: string) {
+  #bindStandardAttribLocations(program: WebGLProgram) {
+    for (const [name, loc] of Object.entries(STANDARD_ATTRIB_LOCATIONS)) {
+      this.#gl.bindAttribLocation(program, loc, name);
+    }
+  }
+
+  #compileShader(type: GLenum, source: string): { shader: WebGLShader | null; error: string } {
     const shader = this.#gl.createShader(type);
-    if (!shader) throw new Error("Failed to create webgl2 shader");
+    if (!shader) return { shader: null, error: "Failed to create shader" };
 
     this.#gl.shaderSource(shader, source);
     this.#gl.compileShader(shader);
-    {
-      const message = this.#gl.getShaderInfoLog(shader);
-      if (message?.length) console.log(message);
+
+    if (!this.#gl.getShaderParameter(shader, this.#gl.COMPILE_STATUS)) {
+      const error = this.#gl.getShaderInfoLog(shader) ?? "Unknown compilation error";
+      this.#gl.deleteShader(shader);
+      return { shader: null, error };
     }
-    this.#gl.attachShader(this.#program, shader);
+
+    return { shader, error: "" };
+  }
+
+  #attachShader(program: WebGLProgram, type: GLenum, source: string) {
+    const { shader, error } = this.#compileShader(type, source);
+    if (!shader) throw new Error(error);
+    this.#gl.attachShader(program, shader);
   }
 }

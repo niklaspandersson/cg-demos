@@ -1,5 +1,5 @@
 import { GLContext } from "./context";
-import { GLSLProgram } from "./program";
+import { GLSLProgram, type RebuildResult } from "./program";
 
 type ParameterDescriptor = {
   title: string;
@@ -23,4 +23,4 @@ interface GLScene {
   params?: ParameterDescriptor[];
 }
 
-export { GLContext, GLSLProgram, type GLScene, type ParameterDescriptor };
+export { GLContext, GLSLProgram, type GLScene, type ParameterDescriptor, type RebuildResult };

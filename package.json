@@ -14,6 +14,8 @@
     "vite-plugin-dynamic-import": "^1.6.0"
   },
   "dependencies": {
+    "@codemirror/lang-cpp": "^6.0.3",
+    "codemirror": "^6.0.2",
     "gl-matrix": "^3.4.3",
     "highlight.js": "^11.11.1"
   }

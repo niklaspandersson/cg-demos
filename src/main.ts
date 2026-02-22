@@ -1,64 +1,15 @@
 import "./elements/sceneview.ts";
+import "./elements/shader-editor.ts";
 import { toControl } from "./elements/controls.ts";
 import { GLScene, GLSLProgram } from "./gl/index.ts";
-import hljs from "highlight.js/lib/core";
-import glsl from "highlight.js/lib/languages/glsl";
-import "highlight.js/styles/github.css";
+import { ShaderEditor } from "./elements/shader-editor.ts";
 
-hljs.registerLanguage("glsl", glsl);
+const sceneView = document.querySelector("scene-view");
+const shaderEditor = document.querySelector<ShaderEditor>("shader-editor");
 
-const sceneView: any = document.querySelector("scene-view");
-const sourcesDiv = document.querySelector<HTMLDivElement>(".sources");
-const sourceCodeDiv = document.querySelector<HTMLDivElement>(".source-code");
+let currentSceneId = "";
 
-// sceneView?.setAttribute('scene', 'texturing-basics')
-
-let currentSources: Record<string, string> = {};
-
-function showSource(source: string) {
-  if (!sourceCodeDiv) return;
-  sourceCodeDiv.innerHTML = hljs.highlight(source, { language: "glsl" }).value;
-}
-
-function displayShaderSources(programs: readonly GLSLProgram[]) {
-  if (!sourcesDiv || !sourceCodeDiv) return;
-
-  if (programs.length === 0) {
-    sourcesDiv.hidden = true;
-    return;
-  }
-
-  const program = programs[0];
-  currentSources = {
-    vertex: program.vertexShaderSource,
-    fragment: program.fragmentShaderSource,
-  };
-
-  sourcesDiv.hidden = false;
-
-  const tabs = sourcesDiv.querySelectorAll<HTMLLIElement>(".tabs li");
-  tabs.forEach((li) => {
-    li.classList.toggle("active", li.dataset.shader === "fragment");
-  });
-  showSource(currentSources.fragment);
-}
-
-sourcesDiv?.addEventListener("click", (e) => {
-  const target = (e.target as HTMLElement).closest<HTMLLIElement>(
-    "[data-shader]",
-  );
-  if (!target || !sourceCodeDiv) return;
-
-  const shaderType = target.dataset.shader!;
-  if (!currentSources[shaderType]) return;
-
-  sourcesDiv.querySelectorAll<HTMLLIElement>(".tabs li").forEach((li) => {
-    li.classList.toggle("active", li === target);
-  });
-  showSource(currentSources[shaderType]);
-});
-
-sceneView?.addEventListener("scene-loaded", (e: CustomEvent) => {
+sceneView?.addEventListener("scene-loaded", ((e: CustomEvent) => {
   const scene: GLScene = e.detail.scene;
   const programs: readonly GLSLProgram[] = e.detail.programs ?? [];
 
@@ -69,13 +20,21 @@ sceneView?.addEventListener("scene-loaded", (e: CustomEvent) => {
       ?.replaceChildren(...params.map(toControl));
   }
 
-  displayShaderSources(programs);
-});
+  if (shaderEditor) {
+    if (programs.length > 0) {
+      shaderEditor.hidden = false;
+      shaderEditor.loadProgram(currentSceneId, programs[0]);
+    } else {
+      shaderEditor.hidden = true;
+    }
+  }
+}) as EventListener);
 
 /** Setup nav */
 document.querySelector("nav")?.addEventListener("click", (e) => {
   const sceneId = (e.target as HTMLElement).dataset?.["scene"];
   if (sceneId) {
+    currentSceneId = sceneId;
     document.querySelector("scene-view")?.setAttribute("scene", sceneId);
   }
 });

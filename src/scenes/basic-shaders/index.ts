@@ -13,6 +13,7 @@ export default class Scene implements GLScene {
 
   renderFrame = (ctx: GLContext) => {
     const { gl } = ctx;
+    this.#program!.use();
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   };
 }
