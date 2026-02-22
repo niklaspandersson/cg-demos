@@ -4,7 +4,9 @@ export default class Scene implements GLScene {
   #program: GLSLProgram | null = null;
   #speed = 3;
   async init(ctx: GLContext) {
-    this.#program = await ctx.createProgram({ url: 'scenes/transformation-simple-affine' })
+    this.#program = await ctx.createProgram({
+      url: "scenes/transformation-simple-affine",
+    });
   }
 
   renderFrame = (ctx: GLContext, _: number, time: number) => {
@@ -15,19 +17,21 @@ export default class Scene implements GLScene {
     mat4.fromTranslation(translation, [0.2 * Math.sin(t), 0, 0.0]);
     const uniforms = this.#program!.use();
     uniforms.uTransformation = translation;
-    gl.drawArrays(gl.TRIANGLES, 0, 3)
-  }
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  };
 
   get params() {
-    return [{
-      title: 'Speed',
-      type: <const>'number',
-      min: 0.2,
-      max: 50,
-      initial: this.#speed,
-      update: (value: number) => {
-        this.#speed = value;
-      }
-    }]
+    return [
+      {
+        title: "Speed",
+        type: <const>"number",
+        min: 0.2,
+        max: 50,
+        initial: this.#speed,
+        update: (value: number) => {
+          this.#speed = value;
+        },
+      },
+    ];
   }
 }

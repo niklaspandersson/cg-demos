@@ -1,106 +1,105 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!-- <title>2DT904 - Computer graphics demos</title> -->
-  <link rel="stylesheet" href="style.css">
-  <script type="module" src="/src/main2.ts"></script>
-</head>
-<body>
-  <header id="global-header">
-    <!-- <h1>2dt904 - Computer Graphics</h1> -->
-    <h2>WebGL demos</h2>
-  </header>
-  <main>
-    <nav>
-      <section>
-        <header>
-          <h3>Basic concepts</h3>
-        </header>
-        <ul>
-          <li data-scene="basic-shaders">Shaders</li>
-          <li data-scene="basic-attributes">Vertex attributes</li>
-          <li data-scene="basic-uniforms">Uniform values</li>
-          <li data-scene="basic-animations">Time based animations</li>
-        </ul>
-      </section>
-      <section>
-        <header>
-          <h3>Transformations</h3>
-        </header>
-        <ul>
-          <li>
-            <h4>Affine transformations</h4>
-            <ul>
-              <li data-scene="transformations-translation">Translation</li>
-              <li data-scene="transformations-rotation">Rotation</li>
-              <li data-scene="transformations-scale">Scale</li>
-              <li>Combined transformations</li>
-            </ul>
-          </li>
-          <li>
-            <h4>Projection transformations</h4>
-            <ul>
-              <li>Orthographic projection</li>
-              <li>Perspective projection</li>
-            </ul>
-          </li>
-          <li>
-            <h4>Changing coordinate systems</h4>
-            <ul>
-              <li>The view transformation</li>
-              <li>Local transformations</li>
-              <li>Transformation hierarchies</li>
-            </ul>
-          </li>
-        </ul>
-      </section>
-      <section>
-        <header>
-          <h3>Images and texturing</h3>
-        </header>
-        <ul>
-          <li data-scene="texturing-basics">Basic texturing</li>
-          <li>UV-coordinates</li>
-          <li>Texture filtering</li>
-          <li>Wrappping modes</li>
-        </ul>
-      </section>
-      <section>
-        <header>
-          <h3>Hidden surface removal</h3>
-        </header>
-        <ul>
-          <li>Back face culling</li>
-          <li>Depth buffer</li>
-          <li>Frustum culling</li>
-        </ul>
-      </section>
-      <section>
-        <header>
-          <h3>Lighting</h3>
-        </header>
-        <ul>
-          <li data-scene="phong-diffuse">The phong lighting model</li>
-        </ul>
-      </section>
-    </nav>
-    <article class="scene-container">
-      <ul class="controls"></ul>
-      <scene-view></scene-view>
-      <div class="sources">
-        <header class="tabs">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- <title>2DT904 - Computer graphics demos</title> -->
+    <link rel="stylesheet" href="style.css" />
+    <script type="module" src="/src/main2.ts"></script>
+  </head>
+  <body>
+    <header id="global-header">
+      <!-- <h1>2dt904 - Computer Graphics</h1> -->
+      <h2>WebGL demos</h2>
+    </header>
+    <main>
+      <nav>
+        <section>
+          <header>
+            <h3>Basic concepts</h3>
+          </header>
           <ul>
-            <li>vertex shader</li>
-            <li class="active">fragment shader</li>
+            <li data-scene="basic-shaders">Shaders</li>
+            <li data-scene="basic-attributes">Vertex attributes</li>
+            <li data-scene="basic-uniforms">Uniform values</li>
+            <li data-scene="basic-animations">Time based animations</li>
           </ul>
-        </header>
-        <div class="source-code">
+        </section>
+        <section>
+          <header>
+            <h3>Transformations</h3>
+          </header>
+          <ul>
+            <li>
+              <h4>Affine transformations</h4>
+              <ul>
+                <li data-scene="transformations-translation">Translation</li>
+                <li data-scene="transformations-rotation">Rotation</li>
+                <li data-scene="transformations-scale">Scale</li>
+                <li>Combined transformations</li>
+              </ul>
+            </li>
+            <li>
+              <h4>Projection transformations</h4>
+              <ul>
+                <li>Orthographic projection</li>
+                <li>Perspective projection</li>
+              </ul>
+            </li>
+            <li>
+              <h4>Changing coordinate systems</h4>
+              <ul>
+                <li>The view transformation</li>
+                <li>Local transformations</li>
+                <li>Transformation hierarchies</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section>
+          <header>
+            <h3>Images and texturing</h3>
+          </header>
+          <ul>
+            <li data-scene="texturing-basics">Basic texturing</li>
+            <li>UV-coordinates</li>
+            <li>Texture filtering</li>
+            <li>Wrappping modes</li>
+          </ul>
+        </section>
+        <section>
+          <header>
+            <h3>Hidden surface removal</h3>
+          </header>
+          <ul>
+            <li>Back face culling</li>
+            <li>Depth buffer</li>
+            <li>Frustum culling</li>
+          </ul>
+        </section>
+        <section>
+          <header>
+            <h3>Lighting</h3>
+          </header>
+          <ul>
+            <li data-scene="phong-diffuse">The phong lighting model</li>
+          </ul>
+        </section>
+      </nav>
+      <article class="scene-container">
+        <ul class="controls"></ul>
+        <scene-view></scene-view>
+        <div class="sources">
+          <header class="tabs">
+            <ul>
+              <li>vertex shader</li>
+              <li class="active">fragment shader</li>
+            </ul>
+          </header>
+          <div class="source-code"></div>
         </div>
-      </div>
-    </article>
-  </main>
-</body>
+      </article>
+    </main>
+  </body>
 </html>

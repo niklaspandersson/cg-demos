@@ -1,5 +1,5 @@
-import fs from './fs.glsl?raw'
-import vs from './vs.glsl?raw'
+import fs from "./fs.glsl?raw";
+import vs from "./vs.glsl?raw";
 import { GLContext, GLScene, GLSLProgram } from "../../gl";
 
 export default class Scene implements GLScene {
@@ -7,27 +7,29 @@ export default class Scene implements GLScene {
   #speed: number = 1;
 
   async init(ctx: GLContext) {
-    this.#program = await ctx.createProgram({ fs, vs })
-    const uniforms = this.#program.use()
+    this.#program = await ctx.createProgram({ fs, vs });
+    const uniforms = this.#program.use();
     uniforms.uColor = [1, 0, 0];
   }
 
   renderFrame = (ctx: GLContext, _: number, time: number) => {
     const { gl } = ctx;
-    const uniforms = this.#program!.use()
+    const uniforms = this.#program!.use();
     uniforms.time = time * this.#speed;
-    gl.drawArrays(gl.TRIANGLES, 0, 3)
-  }
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  };
 
   get params() {
-    return [{
-      title: 'Speed',
-      type: <const>'number',
-      min: 0.2,
-      max: 10,
-      update: (value: number) => {
-        this.#speed = value;
-      }
-    }]
+    return [
+      {
+        title: "Speed",
+        type: <const>"number",
+        min: 0.2,
+        max: 10,
+        update: (value: number) => {
+          this.#speed = value;
+        },
+      },
+    ];
   }
 }
