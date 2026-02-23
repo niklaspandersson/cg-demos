@@ -9,7 +9,6 @@ export default {
     rollupOptions: {
       input: {
         main: "./index.html",
-        main2: "./index2.html",
       },
     },
   },
