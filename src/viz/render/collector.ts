@@ -1,3 +1,4 @@
+import type { mat4 } from "gl-matrix";
 import type { LineBatch } from "./lines";
 import type { GpuMesh, MeshData } from "./mesh";
 import type { Color } from "../types";
@@ -5,6 +6,8 @@ import type { Color } from "../types";
 export type MeshOptions = {
   /** Skip lighting and draw the flat colour. */
   unlit?: boolean;
+  /** Extra transform applied inside the node's own space. */
+  local?: mat4;
 };
 
 /**

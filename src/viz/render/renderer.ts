@@ -34,6 +34,7 @@ export class VizRenderer {
   lightDirection: vec3 = vec3.normalize(vec3.create(), [-0.4, -1, -0.35]);
   ambient = 0.35;
 
+  #scratch = vec3.create();
   #opaque: MeshItem[] = [];
   #transparent: MeshItem[] = [];
   #meshCache = new Map<string, GpuMesh>();
@@ -61,7 +62,7 @@ export class VizRenderer {
     return mesh;
   }
 
-  render(root: Node, view: mat4, projection: mat4) {
+  render(root: Node, view: mat4, projection: mat4, options: { skip?: Node } = {}) {
     const gl = this.#gl;
     const viewProjection = mat4.multiply(mat4.create(), projection, view);
 
@@ -69,7 +70,7 @@ export class VizRenderer {
     this.#transparent.length = 0;
     this.#lines.clear();
 
-    this.#collect(root, view);
+    this.#collect(root, view, options.skip);
 
     gl.enable(gl.DEPTH_TEST);
     gl.enable(gl.BLEND);
@@ -98,20 +99,29 @@ export class VizRenderer {
     this.#meshCache.clear();
   }
 
-  #collect(node: Node, view: mat4) {
-    if (!node.visible) return;
-
-    const position = node.worldPosition(vec3.create());
-    const depth = vec3.transformMat4(position, position, view)[2];
+  #collect(node: Node, view: mat4, skip?: Node) {
+    if (!node.visible || node === skip) return;
 
     const collector: Collector = {
       lines: this.#lines,
       geometry: (key, build) => this.mesh(key, build),
       mesh: (mesh: GpuMesh, color: Color, options: MeshOptions = {}) => {
+        const world = options.local
+          ? mat4.multiply(mat4.create(), node.worldMatrix, options.local)
+          : node.worldMatrix;
+
+        // Sort transparent surfaces by where they actually sit, which is not
+        // the node's origin once a local offset is involved.
+        const depth = vec3.transformMat4(
+          vec3.set(this.#scratch, world[12], world[13], world[14]),
+          this.#scratch,
+          view,
+        )[2];
+
         const rgbaColor = rgba(color);
         const item: MeshItem = {
           mesh,
-          world: node.worldMatrix,
+          world,
           color: rgbaColor,
           unlit: options.unlit ?? false,
           depth,
@@ -126,7 +136,7 @@ export class VizRenderer {
     node.collect(collector);
     this.#lines.transform = null;
 
-    for (const child of node.children) this.#collect(child, view);
+    for (const child of node.children) this.#collect(child, view, skip);
   }
 
   #drawMeshes(items: MeshItem[], viewProjection: mat4) {

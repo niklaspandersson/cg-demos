@@ -22,7 +22,21 @@ export {
 export { MeshNode, type MeshNodeOptions, type Shape } from "./entities/meshnode";
 export { LineNode, type LineNodeOptions } from "./entities/linenode";
 
+export {
+  SceneCamera,
+  type SceneCameraOptions,
+  type SceneCameraGizmos,
+  type ProjectionType,
+} from "./entities/scenecamera";
+
 export { grid, axes, AxesNode, type AxesOptions } from "./gizmos/helpers";
+export {
+  frustumCorners,
+  frustumSlice,
+  viewDepthToNdcZ,
+  unproject,
+  FRUSTUM_EDGES,
+} from "./gizmos/frustum";
 
 export { VizRenderer } from "./render/renderer";
 export { LineBatch } from "./render/lines";
