@@ -412,7 +412,7 @@ Each phase ends with something demonstrable in a lecture.
 | --- | --- | --- |
 | **0. Prep** (done) | `dispose()`, canvas resize + DPR, pointer events, `GpuMesh`/VAO | An empty resizable playground scene that clears to a background colour |
 | **1. Core** (done) | `Transform`, `Node`, `VizScene`, `Viewer`, `LineBatch`, `VizRenderer`, line + surface shaders, primitives (grid, axes, wire box, wire plane, sphere) | A static scene of wireframe objects on a grid |
-| **2. Viewer controls** | `ViewerControls` (orbit + fly + damping), `focus()`, reset | You can fly and orbit the Phase 1 scene |
+| **2. Viewer controls** (done) | `ViewerControls` (orbit + fly + damping), `focus()`, reset | You can fly and orbit the Phase 1 scene |
 | **3. Scene cameras** | `SceneCamera`, `frustumCorners()`, frustum / near / far / image-plane / axes / lookAt gizmos, **look-through inset viewport** | The "what is a view frustum" demo, perspective ⟷ orthographic |
 | **4. Lights** | `DirectionalLight`, `PointLight`, `SpotLight` + gizmos; lighting in the surface shader | The "three kinds of light" demo |
 | **5. Interaction** | HTML label overlay, double-click picking, HUD legend + entity list + controls help | Labelled diagrams; click any entity to orbit it |

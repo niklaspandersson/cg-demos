@@ -13,6 +13,11 @@ export { Node, type NodeOptions } from "./core/node";
 export { Transform, type TransformOptions } from "./core/transform";
 
 export { Viewer, type ViewerOptions } from "./camera/viewer";
+export {
+  ViewerControls,
+  type ViewerControlsOptions,
+  type ControlsMode,
+} from "./camera/controls";
 
 export { MeshNode, type MeshNodeOptions, type Shape } from "./entities/meshnode";
 export { LineNode, type LineNodeOptions } from "./entities/linenode";

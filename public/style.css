@@ -99,6 +99,17 @@ main {
       /* the playground handles dragging itself, so the browser must not
          hijack pointer gestures for scrolling or zooming */
       touch-action: none;
+      cursor: grab;
+
+      &:active {
+        cursor: grabbing;
+      }
+
+      /* it is focusable so it can receive the keyboard, but the focus ring
+         over the scene would just be noise */
+      &:focus {
+        outline: none;
+      }
     }
   }
 

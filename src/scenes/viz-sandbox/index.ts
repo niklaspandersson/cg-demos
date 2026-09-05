@@ -6,17 +6,13 @@ import type { ParameterDescriptor } from "../../gl";
  * test - if this renders, the library works - and the reference for what a
  * demo looks like.
  *
- * The viewer is driven by sliders here. From the next phase on it is driven
- * by the mouse instead, and these sliders go away.
+ * Drag to orbit, right-drag to pan, scroll to zoom, F to fly with WASD,
+ * R to get back to this starting view.
  */
 export default class Scene extends Playground {
-  #azimuth = 35;
-  #elevation = 25;
-  #distance = 14;
-
   setup() {
     this.viewer.set({ target: [0, 1, 0], fov: 50 });
-    this.#placeViewer();
+    this.viewer.setOrbit(35, 25, 14);
 
     this.scene.add(grid({ size: 12, step: 1 }));
     this.scene.add(axes({ size: 1.5 }));
@@ -90,46 +86,13 @@ export default class Scene extends Playground {
     pivot.add(axes({ size: 1 }));
   }
 
-  #placeViewer() {
-    this.viewer.setOrbit(this.#azimuth, this.#elevation, this.#distance);
-  }
-
   get params(): ParameterDescriptor[] {
     return [
       {
-        title: "Azimuth",
-        type: "number",
-        min: -180,
-        max: 180,
-        step: 1,
-        initial: this.#azimuth,
-        update: (value: number) => {
-          this.#azimuth = value;
-          this.#placeViewer();
-        },
-      },
-      {
-        title: "Elevation",
-        type: "number",
-        min: -80,
-        max: 85,
-        step: 1,
-        initial: this.#elevation,
-        update: (value: number) => {
-          this.#elevation = value;
-          this.#placeViewer();
-        },
-      },
-      {
-        title: "Distance",
-        type: "number",
-        min: 3,
-        max: 30,
-        step: 0.5,
-        initial: this.#distance,
-        update: (value: number) => {
-          this.#distance = value;
-          this.#placeViewer();
+        title: "Fly mode",
+        type: "boolean",
+        update: (value: boolean) => {
+          this.controls.mode = value ? "fly" : "orbit";
         },
       },
     ];

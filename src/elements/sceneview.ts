@@ -23,6 +23,10 @@ export class GLSceneView extends HTMLElement {
   #surface: HTMLElement;
   #resizeObserver: ResizeObserver;
   #scene: GLScene | null = null;
+  /** The scene currently running, or null while none is loaded. */
+  get currentScene() {
+    return this.#scene;
+  }
 
   constructor() {
     super();

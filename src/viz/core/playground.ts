@@ -1,5 +1,6 @@
 import type { GLContext, GLScene, ParameterDescriptor } from "../../gl";
 import { Viewer } from "../camera/viewer";
+import { ViewerControls } from "../camera/controls";
 import { VizRenderer } from "../render/renderer";
 import { VizScene } from "./scene";
 
@@ -25,6 +26,9 @@ export abstract class Playground implements GLScene {
   /** The camera you look through. Not part of the scene. */
   readonly viewer = new Viewer();
 
+  /** Mouse and keyboard control of the viewer. */
+  readonly controls = new ViewerControls(this.viewer);
+
   /** Fills the surrounding panel rather than using the fixed 512x512 canvas. */
   readonly layout = "fill" as const;
 
@@ -42,12 +46,18 @@ export abstract class Playground implements GLScene {
 
     ctx.clearColor = this.background;
     await this.setup(ctx);
+
+    // setup() is where a demo places the viewer, so the controls pick up the
+    // pose afterwards - and remember it as the view that "R" returns to.
+    this.controls.syncFromViewer().saveHome();
+    this.controls.attach(ctx.gl.canvas as HTMLCanvasElement);
   }
 
   renderFrame = (ctx: GLContext, dt: number, time: number) => {
     const renderer = this.#renderer;
     if (!renderer) return;
 
+    this.controls.update(dt);
     this.update(dt, time);
     this.scene.update();
 
@@ -62,6 +72,7 @@ export abstract class Playground implements GLScene {
   };
 
   dispose() {
+    this.controls.dispose();
     this.#renderer?.dispose();
     this.#renderer = null;
   }

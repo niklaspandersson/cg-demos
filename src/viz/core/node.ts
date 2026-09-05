@@ -69,6 +69,23 @@ export class Node {
     for (const child of this.children) child.updateWorldMatrix(this.worldMatrix);
   }
 
+  /**
+   * Roughly how big this node is, used to decide how far back the viewer has
+   * to stand to see all of it. Primitives are unit sized, so the world scale
+   * is a good enough answer; subclasses with their own extent override it.
+   */
+  focusRadius(): number {
+    const m = this.worldMatrix;
+    return (
+      0.7 *
+      Math.max(
+        Math.hypot(m[0], m[1], m[2]),
+        Math.hypot(m[4], m[5], m[6]),
+        Math.hypot(m[8], m[9], m[10]),
+      )
+    );
+  }
+
   worldPosition(out: vec3 = vec3.create()) {
     return vec3.set(out, this.worldMatrix[12], this.worldMatrix[13], this.worldMatrix[14]);
   }
