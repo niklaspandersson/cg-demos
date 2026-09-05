@@ -42,10 +42,14 @@ uniform mat4 uViewProjection;
 uniform mat3 uNormalMatrix;
 
 out vec3 vNormal;
+out vec3 vWorldPosition;
 
 void main() {
+  vec4 world = uModel * vec4(aPosition, 1.0);
+
   vNormal = uNormalMatrix * aNormal;
-  gl_Position = uViewProjection * uModel * vec4(aPosition, 1.0);
+  vWorldPosition = world.xyz;
+  gl_Position = uViewProjection * world;
 }
 `;
 
@@ -53,23 +57,63 @@ const SURFACE_FS = `#version 300 es
 precision highp float;
 
 in vec3 vNormal;
+in vec3 vWorldPosition;
 
 uniform vec4 uColor;
-uniform vec3 uLightDirection; // the direction the light travels
 uniform float uAmbient;
-uniform float uUnlit;         // 1.0 disables shading
+uniform float uUnlit;              // 1.0 disables shading
+
+// One light of each kind is enough to illustrate the differences between
+// them. A black colour means "this light is not in the scene".
+uniform vec3 uDirectionalColor;
+uniform vec3 uDirectionalDirection; // the direction the light travels
+
+uniform vec3 uPointColor;
+uniform vec3 uPointPosition;
+uniform float uPointRange;
+
+uniform vec3 uSpotColor;
+uniform vec3 uSpotPosition;
+uniform vec3 uSpotDirection;
+uniform float uSpotRange;
+uniform vec2 uSpotCone;             // cos(outer), cos(inner)
 
 out vec4 fragColor;
+
+/** Fades to a quarter of the brightness at the light's range. */
+float attenuation(float distance, float range) {
+  float d = distance / max(range, 0.001);
+  return 1.0 / (1.0 + 3.0 * d * d);
+}
 
 void main() {
   // Surfaces here are often seen from the inside, so light both sides.
   vec3 normal = normalize(vNormal);
   if (!gl_FrontFacing) normal = -normal;
 
-  float lambert = max(dot(normal, -normalize(uLightDirection)), 0.0);
-  float shade = mix(uAmbient + (1.0 - uAmbient) * lambert, 1.0, uUnlit);
+  vec3 light = vec3(uAmbient);
 
-  fragColor = vec4(uColor.rgb * shade, uColor.a);
+  light += uDirectionalColor * max(dot(normal, -normalize(uDirectionalDirection)), 0.0);
+
+  vec3 toPoint = uPointPosition - vWorldPosition;
+  float pointDistance = length(toPoint);
+  light += uPointColor
+    * max(dot(normal, toPoint / max(pointDistance, 0.0001)), 0.0)
+    * attenuation(pointDistance, uPointRange);
+
+  vec3 toSpot = uSpotPosition - vWorldPosition;
+  float spotDistance = length(toSpot);
+  vec3 spotDir = toSpot / max(spotDistance, 0.0001);
+  // How far inside the cone this point is: 1 within the bright core, 0
+  // outside the outer angle, a soft edge in between.
+  float cone = smoothstep(uSpotCone.x, uSpotCone.y, dot(-spotDir, normalize(uSpotDirection)));
+  light += uSpotColor
+    * max(dot(normal, spotDir), 0.0)
+    * cone
+    * attenuation(spotDistance, uSpotRange);
+
+  vec3 shaded = mix(uColor.rgb * light, uColor.rgb, uUnlit);
+  fragColor = vec4(shaded, uColor.a);
 }
 `;
 

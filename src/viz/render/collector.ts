@@ -11,6 +11,23 @@ export type MeshOptions = {
 };
 
 /**
+ * A light's contribution to shading, in world space. Gathered during
+ * traversal so it is ready by the time surfaces are drawn.
+ */
+export type LightInfo = {
+  kind: "directional" | "point" | "spot";
+  color: [number, number, number];
+  /** The direction the light travels. Directional and spot lights only. */
+  direction?: [number, number, number];
+  /** Point and spot lights only. */
+  position?: [number, number, number];
+  /** Distance at which a point or spot light has faded to a quarter. */
+  range?: number;
+  /** Cosines of the outer and inner cone angles. Spot lights only. */
+  cone?: [number, number];
+};
+
+/**
  * What a node is handed during `collect()`. Anything it pushes here is drawn
  * this frame, positioned by the node's world matrix.
  */
@@ -26,4 +43,7 @@ export interface Collector {
 
   /** A solid surface. An alpha below 1 makes it a transparent one. */
   mesh(mesh: GpuMesh, color: Color, options?: MeshOptions): void;
+
+  /** Contribute to how surfaces in this scene are shaded. */
+  light(info: LightInfo): void;
 }

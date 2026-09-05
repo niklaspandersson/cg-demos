@@ -91,9 +91,10 @@ export function sphereMesh(segments = 24, rings = 16): MeshData {
   const stride = segments + 1;
   for (let ring = 0; ring < rings; ring++) {
     for (let segment = 0; segment < segments; segment++) {
-      const a = ring * stride + segment;
-      const b = a + stride;
-      indices.push(a, b, a + 1, a + 1, b, b + 1);
+      const a = ring * stride + segment;      // this ring
+      const b = a + stride;                   // the ring below it
+      // Counter-clockwise seen from outside, so the normals face outwards.
+      indices.push(a, a + 1, b, a + 1, b + 1, b);
     }
   }
 

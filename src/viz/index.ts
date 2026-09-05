@@ -29,7 +29,18 @@ export {
   type ProjectionType,
 } from "./entities/scenecamera";
 
-export { grid, axes, AxesNode, type AxesOptions } from "./gizmos/helpers";
+export {
+  Light,
+  DirectionalLight,
+  PointLight,
+  SpotLight,
+  type LightOptions,
+  type DirectionalLightOptions,
+  type PointLightOptions,
+  type SpotLightOptions,
+} from "./entities/lights";
+
+export { grid, axes, arrow, ring, AxesNode, type AxesOptions } from "./gizmos/helpers";
 export {
   frustumCorners,
   frustumSlice,
@@ -41,7 +52,7 @@ export {
 export { VizRenderer } from "./render/renderer";
 export { LineBatch } from "./render/lines";
 export { GpuMesh, type MeshData } from "./render/mesh";
-export type { Collector, MeshOptions } from "./render/collector";
+export type { Collector, MeshOptions, LightInfo } from "./render/collector";
 
 export * as primitives from "./geometry/primitives";
 

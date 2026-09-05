@@ -42,8 +42,9 @@ export function toControl(param: ParameterDescriptor) {
     el.innerHTML = `<label for="${id}">${title}:</label>
     <input type="range" id="${id}" name="${id}" value="${value}" min="${min}" max="${max}" step="${step}">`;
   } else if (param.type === "boolean") {
+    const checked = param.initial === true ? " checked" : "";
     el.innerHTML = `<label for="${id}">${title}:</label>
-    <input type="checkbox" id="${id}" name="${id}">`;
+    <input type="checkbox" id="${id}" name="${id}"${checked}>`;
   }
 
   if (param.type === "color") {

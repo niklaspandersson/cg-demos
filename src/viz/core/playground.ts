@@ -38,7 +38,11 @@ export abstract class Playground implements GLScene {
   #inset: { camera: SceneCamera; widthFraction: number } | null = null;
 
   #renderer: VizRenderer | null = null;
-  protected get renderer() {
+  /** Available from `setup()` onwards. */
+  get renderer(): VizRenderer {
+    if (!this.#renderer) {
+      throw new Error("The renderer only exists once the playground has started");
+    }
     return this.#renderer;
   }
 

@@ -4,8 +4,11 @@ import type { Node } from "../core/node";
 import { LineBatch } from "./lines";
 import { GpuMesh, type MeshData } from "./mesh";
 import { createLineProgram, createSurfaceProgram } from "./programs";
-import type { Collector, MeshOptions } from "./collector";
+import type { Collector, LightInfo, MeshOptions } from "./collector";
 import { rgba, type Color } from "../types";
+
+const OFF: [number, number, number] = [0, 0, 0];
+const DOWN: [number, number, number] = [0, -1, 0];
 
 type MeshItem = {
   mesh: GpuMesh;
@@ -30,9 +33,19 @@ export class VizRenderer {
   #lineProgram: GLSLProgram | null = null;
   #surfaceProgram: GLSLProgram | null = null;
 
-  /** Direction the default light travels. Lit surfaces use this until Phase 4. */
-  lightDirection: vec3 = vec3.normalize(vec3.create(), [-0.4, -1, -0.35]);
   ambient = 0.35;
+
+  /**
+   * Used when a scene contains no directional light of its own, so that a
+   * demo about something else still gets readable shading for free.
+   */
+  defaultLight: LightInfo | null = {
+    kind: "directional",
+    color: [0.75, 0.75, 0.78],
+    direction: [-0.4, -1, -0.35],
+  };
+
+  #lights: LightInfo[] = [];
 
   #scratch = vec3.create();
   #opaque: MeshItem[] = [];
@@ -68,6 +81,7 @@ export class VizRenderer {
 
     this.#opaque.length = 0;
     this.#transparent.length = 0;
+    this.#lights.length = 0;
     this.#lines.clear();
 
     this.#collect(root, view, options.skip);
@@ -105,6 +119,7 @@ export class VizRenderer {
     const collector: Collector = {
       lines: this.#lines,
       geometry: (key, build) => this.mesh(key, build),
+      light: (info: LightInfo) => this.#lights.push(info),
       mesh: (mesh: GpuMesh, color: Color, options: MeshOptions = {}) => {
         const world = options.local
           ? mat4.multiply(mat4.create(), node.worldMatrix, options.local)
@@ -139,13 +154,38 @@ export class VizRenderer {
     for (const child of node.children) this.#collect(child, view, skip);
   }
 
+  /**
+   * One light of each kind reaches the shader. A scene with more than that is
+   * past the point where an illustration is still illustrating anything.
+   */
+  #applyLights(uniforms: Record<string, unknown>) {
+    const directional =
+      this.#lights.find((l) => l.kind === "directional") ??
+      (this.#lights.length === 0 ? this.defaultLight ?? undefined : undefined);
+    const point = this.#lights.find((l) => l.kind === "point");
+    const spot = this.#lights.find((l) => l.kind === "spot");
+
+    uniforms.uDirectionalColor = directional?.color ?? OFF;
+    uniforms.uDirectionalDirection = directional?.direction ?? DOWN;
+
+    uniforms.uPointColor = point?.color ?? OFF;
+    uniforms.uPointPosition = point?.position ?? OFF;
+    uniforms.uPointRange = point?.range ?? 10;
+
+    uniforms.uSpotColor = spot?.color ?? OFF;
+    uniforms.uSpotPosition = spot?.position ?? OFF;
+    uniforms.uSpotDirection = spot?.direction ?? DOWN;
+    uniforms.uSpotRange = spot?.range ?? 10;
+    uniforms.uSpotCone = spot?.cone ?? [1, 1];
+  }
+
   #drawMeshes(items: MeshItem[], viewProjection: mat4) {
     if (items.length === 0) return;
 
     const uniforms = this.#surfaceProgram!.use();
     uniforms.uViewProjection = viewProjection;
-    uniforms.uLightDirection = this.lightDirection;
     uniforms.uAmbient = this.ambient;
+    this.#applyLights(uniforms);
 
     const normalMatrix = mat3.create();
     for (const item of items) {
