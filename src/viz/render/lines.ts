@@ -2,12 +2,18 @@ import { mat4, vec3 } from "gl-matrix";
 import { STANDARD_ATTRIB_LOCATIONS } from "../../gl/program";
 import { rgba, type Color, type Vec3Like } from "../types";
 
-const FLOATS_PER_VERTEX = 7; // x y z  r g b a
+/** Per segment: both endpoints and one colour. */
+const FLOATS_PER_SEGMENT = 10;
 
 /**
- * Every line in the playground - grids, axes, wireframes, frustums, light
- * directions - ends up in this one batch and is drawn with a single
- * `gl.LINES` call.
+ * The four corners of a segment's quad, as (which end, which side).
+ * Drawn as a triangle strip, one instance per segment.
+ */
+const CORNERS = new Float32Array([0, -1, 0, 1, 1, -1, 1, 1]);
+
+/**
+ * Every line in the playground - grids, wireframes, axes, frustums, light
+ * directions - ends up in this one batch and is drawn with a single call.
  *
  * That is the trick that keeps the library small: a gizmo never owns a buffer
  * or a shader, it just pushes segments. Adding a new one is a function, not a
@@ -16,17 +22,26 @@ const FLOATS_PER_VERTEX = 7; // x y z  r g b a
  * Points are pushed in whatever space `transform` describes (the renderer sets
  * it to the current node's world matrix), so gizmo code can work in
  * comfortable local coordinates.
+ *
+ * Each segment is drawn as a screen-space quad rather than with `gl.LINES`,
+ * because browsers clamp `gl.lineWidth` to one pixel and a one pixel line is
+ * hard to see on a projector. The widening happens in the vertex shader; see
+ * `programs.ts`.
  */
 export class LineBatch {
   /** Applied to every point pushed. `null` means the points are world space. */
   transform: mat4 | null = null;
 
-  #data = new Float32Array(1024 * FLOATS_PER_VERTEX);
-  #vertexCount = 0;
+  /** Line width in pixels, the same at any distance. */
+  thickness = 1.6;
+
+  #data = new Float32Array(512 * FLOATS_PER_SEGMENT);
+  #count = 0;
 
   #gl: WebGL2RenderingContext;
   #vao: WebGLVertexArrayObject;
   #buffer: WebGLBuffer;
+  #corners: WebGLBuffer;
   #capacityOnGpu = 0;
 
   constructor(gl: WebGL2RenderingContext) {
@@ -34,52 +49,62 @@ export class LineBatch {
 
     const vao = gl.createVertexArray();
     const buffer = gl.createBuffer();
-    if (!vao || !buffer) throw new Error("Failed to create line buffers");
+    const corners = gl.createBuffer();
+    if (!vao || !buffer || !corners) throw new Error("Failed to create line buffers");
     this.#vao = vao;
     this.#buffer = buffer;
+    this.#corners = corners;
 
-    const stride = FLOATS_PER_VERTEX * Float32Array.BYTES_PER_ELEMENT;
     gl.bindVertexArray(vao);
+
+    // Which corner of the quad this vertex is: the same four for every
+    // segment, so it does not advance per instance.
+    gl.bindBuffer(gl.ARRAY_BUFFER, corners);
+    gl.bufferData(gl.ARRAY_BUFFER, CORNERS, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(STANDARD_ATTRIB_LOCATIONS.aTexCoord);
+    gl.vertexAttribPointer(STANDARD_ATTRIB_LOCATIONS.aTexCoord, 2, gl.FLOAT, false, 0, 0);
+
+    // The segment itself advances once per instance.
+    const stride = FLOATS_PER_SEGMENT * Float32Array.BYTES_PER_ELEMENT;
+    const float = Float32Array.BYTES_PER_ELEMENT;
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-    gl.enableVertexAttribArray(STANDARD_ATTRIB_LOCATIONS.aPosition);
-    gl.vertexAttribPointer(STANDARD_ATTRIB_LOCATIONS.aPosition, 3, gl.FLOAT, false, stride, 0);
-    gl.enableVertexAttribArray(STANDARD_ATTRIB_LOCATIONS.aColor);
-    gl.vertexAttribPointer(
-      STANDARD_ATTRIB_LOCATIONS.aColor,
-      4,
-      gl.FLOAT,
-      false,
-      stride,
-      3 * Float32Array.BYTES_PER_ELEMENT,
-    );
+    this.#instanced(STANDARD_ATTRIB_LOCATIONS.aPosition, 3, stride, 0);
+    this.#instanced(STANDARD_ATTRIB_LOCATIONS.aNormal, 3, stride, 3 * float);
+    this.#instanced(STANDARD_ATTRIB_LOCATIONS.aColor, 4, stride, 6 * float);
+
     gl.bindVertexArray(null);
   }
 
+  get segmentCount() {
+    return this.#count;
+  }
+
   clear() {
-    this.#vertexCount = 0;
+    this.#count = 0;
     this.transform = null;
   }
 
   line(a: Vec3Like, b: Vec3Like, color: Color) {
-    this.#vertex(a, color);
-    this.#vertex(b, color);
+    this.#segment(a, b, color);
   }
 
-  /** `points` is a flat list of xyz triples used as pairs of endpoints. */
+  /** `points` is a flat list of xyz triples, read as pairs of endpoints. */
   segments(points: ArrayLike<number>, color: Color) {
-    const p: vec3 = [0, 0, 0];
-    for (let i = 0; i + 2 < points.length; i += 3) {
-      vec3.set(p, points[i], points[i + 1], points[i + 2]);
-      this.#vertex(p, color);
+    const a: vec3 = [0, 0, 0];
+    const b: vec3 = [0, 0, 0];
+    for (let i = 0; i + 5 < points.length; i += 6) {
+      vec3.set(a, points[i], points[i + 1], points[i + 2]);
+      vec3.set(b, points[i + 3], points[i + 4], points[i + 5]);
+      this.#segment(a, b, color);
     }
   }
 
   polyline(points: readonly Vec3Like[], color: Color, closed = false) {
-    for (let i = 0; i + 1 < points.length; i++) this.line(points[i], points[i + 1], color);
-    if (closed && points.length > 2) this.line(points[points.length - 1], points[0], color);
+    for (let i = 0; i + 1 < points.length; i++) this.#segment(points[i], points[i + 1], color);
+    if (closed && points.length > 2) this.#segment(points[points.length - 1], points[0], color);
   }
 
-  /** A dashed segment, useful for "this is a construction line, not geometry". */
+  /** A dashed segment, for "this is a construction line, not geometry". */
   dashed(a: Vec3Like, b: Vec3Like, color: Color, dashLength = 0.15) {
     const from = vec3.clone(a as vec3);
     const to = vec3.clone(b as vec3);
@@ -92,49 +117,70 @@ export class LineBatch {
     for (let i = 0; i < steps; i++) {
       vec3.lerp(point, from, to, i / steps);
       vec3.lerp(next, from, to, (i + 0.5) / steps);
-      this.line(point, next, color);
+      this.#segment(point, next, color);
     }
   }
 
-  /** Upload this frame's segments and draw them all at once. */
-  flush() {
-    if (this.#vertexCount === 0) return;
+  /** Upload this frame's segments. Call once, then `draw()` as often as needed. */
+  upload() {
+    if (this.#count === 0) return;
 
     const gl = this.#gl;
-    const used = this.#data.subarray(0, this.#vertexCount * FLOATS_PER_VERTEX);
-
     gl.bindVertexArray(this.#vao);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.#buffer);
+
     if (this.#data.length > this.#capacityOnGpu) {
       gl.bufferData(gl.ARRAY_BUFFER, this.#data.byteLength, gl.DYNAMIC_DRAW);
       this.#capacityOnGpu = this.#data.length;
     }
-    gl.bufferSubData(gl.ARRAY_BUFFER, 0, used);
-    gl.drawArrays(gl.LINES, 0, this.#vertexCount);
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.#data.subarray(0, this.#count * FLOATS_PER_SEGMENT));
+    gl.bindVertexArray(null);
+  }
+
+  draw() {
+    if (this.#count === 0) return;
+
+    const gl = this.#gl;
+    gl.bindVertexArray(this.#vao);
+    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, this.#count);
     gl.bindVertexArray(null);
   }
 
   dispose() {
     this.#gl.deleteBuffer(this.#buffer);
+    this.#gl.deleteBuffer(this.#corners);
     this.#gl.deleteVertexArray(this.#vao);
   }
 
-  #scratch = vec3.create();
-  #vertex(point: Vec3Like, color: Color) {
-    let p = point;
-    if (this.transform) {
-      p = vec3.transformMat4(this.#scratch, point, this.transform);
-    }
-
-    this.#reserve(this.#vertexCount + 1);
-    const [r, g, b, a] = rgba(color);
-    const at = this.#vertexCount * FLOATS_PER_VERTEX;
-    this.#data.set([p[0], p[1], p[2], r, g, b, a], at);
-    this.#vertexCount++;
+  #instanced(location: number, size: number, stride: number, offset: number) {
+    const gl = this.#gl;
+    gl.enableVertexAttribArray(location);
+    gl.vertexAttribPointer(location, size, gl.FLOAT, false, stride, offset);
+    gl.vertexAttribDivisor(location, 1);
   }
 
-  #reserve(vertices: number) {
-    const needed = vertices * FLOATS_PER_VERTEX;
+  #a = vec3.create();
+  #b = vec3.create();
+  #segment(a: Vec3Like, b: Vec3Like, color: Color) {
+    let from = a;
+    let to = b;
+    if (this.transform) {
+      from = vec3.transformMat4(this.#a, a, this.transform);
+      to = vec3.transformMat4(this.#b, b, this.transform);
+    }
+
+    this.#reserve(this.#count + 1);
+    const [r, g, bb, alpha] = rgba(color);
+    const at = this.#count * FLOATS_PER_SEGMENT;
+    this.#data.set(
+      [from[0], from[1], from[2], to[0], to[1], to[2], r, g, bb, alpha],
+      at,
+    );
+    this.#count++;
+  }
+
+  #reserve(segments: number) {
+    const needed = segments * FLOATS_PER_SEGMENT;
     if (needed <= this.#data.length) return;
 
     let size = this.#data.length;

@@ -9,16 +9,48 @@ import { GLSLProgram } from "../../gl/program";
  */
 
 const LINE_VS = `#version 300 es
-in vec3 aPosition;
+// One instance per line segment, drawn as a four-corner strip. The segment's
+// two endpoints arrive together, and the vertex shader widens it in screen
+// space - browsers clamp gl.lineWidth to one pixel, so a line thick enough to
+// see on a projector has to be built out of triangles.
+in vec3 aPosition;  // one end of the segment
+in vec3 aNormal;    // the other end
 in vec4 aColor;
+in vec2 aTexCoord;  // x: which end (0 or 1), y: which side (-1 or +1)
 
 uniform mat4 uViewProjection;
+uniform vec2 uHalfViewport; // half the viewport, in pixels
+uniform float uThickness;   // in pixels
 
 out vec4 vColor;
 
+/**
+ * Pull an endpoint that is at or behind the eye forward to where w is safely
+ * positive, so dividing by w below cannot send it somewhere absurd.
+ */
+vec4 clipToFront(vec4 keep, vec4 move) {
+  float epsilon = 0.0001;
+  if (move.w >= epsilon) return move;
+  return mix(move, keep, (epsilon - move.w) / (keep.w - move.w));
+}
+
 void main() {
+  vec4 a = clipToFront(uViewProjection * vec4(aNormal, 1.0), uViewProjection * vec4(aPosition, 1.0));
+  vec4 b = clipToFront(uViewProjection * vec4(aPosition, 1.0), uViewProjection * vec4(aNormal, 1.0));
+
+  vec4 clip = mix(a, b, aTexCoord.x);
   vColor = aColor;
-  gl_Position = uViewProjection * vec4(aPosition, 1.0);
+
+  // Offset sideways by half the thickness. Scaling by clip.w undoes the
+  // perspective divide that is about to happen, which is what keeps the line
+  // the same number of pixels wide however far away it is.
+  vec2 direction = (b.xy / b.w - a.xy / a.w) * uHalfViewport;
+  vec2 side = dot(direction, direction) > 0.0
+    ? normalize(vec2(-direction.y, direction.x))
+    : vec2(0.0);
+
+  clip.xy += side * aTexCoord.y * uThickness * 0.5 * clip.w / uHalfViewport;
+  gl_Position = clip;
 }
 `;
 
@@ -26,10 +58,13 @@ const LINE_FS = `#version 300 es
 precision highp float;
 
 in vec4 vColor;
+
+uniform float uOpacity; // dims the pass that draws hidden lines
+
 out vec4 fragColor;
 
 void main() {
-  fragColor = vColor;
+  fragColor = vec4(vColor.rgb, vColor.a * uOpacity);
 }
 `;
 

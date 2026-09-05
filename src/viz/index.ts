@@ -57,6 +57,7 @@ export type { Collector, MeshOptions, LightInfo } from "./render/collector";
 export { LabelOverlay, type Label, type LabelOptions, type LabelTarget } from "./ui/labels";
 export { Hud } from "./ui/hud";
 export { pickNode } from "./ui/picking";
+export { readViewFromUrl, writeViewToUrl } from "./ui/viewlink";
 
 export * as primitives from "./geometry/primitives";
 

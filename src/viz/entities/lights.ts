@@ -94,7 +94,7 @@ export class DirectionalLight extends Light {
     };
     collector.light(info);
 
-    const { lines } = collector;
+    const { seeThroughLines: lines } = collector;
     const length = this.show.length ?? 2.5;
     const count = this.show.rays ?? 0;
 
@@ -173,7 +173,7 @@ export class PointLight extends Light {
       range: this.range,
     });
 
-    const { lines } = collector;
+    const { seeThroughLines: lines } = collector;
     const length = this.show.length ?? 0.9;
 
     if (this.show.star) {
@@ -278,7 +278,7 @@ export class SpotLight extends Light {
       cone: [outer, inner],
     });
 
-    const { lines } = collector;
+    const { seeThroughLines: lines } = collector;
     const length = this.show.length ?? 4;
 
     if (this.show.cone) this.#cone(collector, this.angle, length, this.color);
@@ -300,7 +300,7 @@ export class SpotLight extends Light {
   }
 
   #cone(collector: Collector, angle: number, length: number, color: Color) {
-    const { lines } = collector;
+    const { seeThroughLines: lines } = collector;
     const radius = Math.tan(angle * DEG_TO_RAD) * length;
 
     // The cone opens along -z, so the rim sits at z = -length.

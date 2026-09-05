@@ -30,10 +30,28 @@ type MeshItem = {
 export class VizRenderer {
   #gl: WebGL2RenderingContext;
   #lines: LineBatch;
+  #seeThrough: LineBatch;
   #lineProgram: GLSLProgram | null = null;
   #surfaceProgram: GLSLProgram | null = null;
 
   ambient = 0.35;
+
+  /**
+   * How brightly to draw the parts of lines that are hidden behind something.
+   * A frustum you cannot see through the objects inside it is not much use in
+   * an illustration, so this is on by default. Set it to 0 for honest
+   * occlusion.
+   */
+  xray = 0.2;
+
+  /** Line width in pixels. */
+  set lineThickness(pixels: number) {
+    this.#lines.thickness = pixels;
+    this.#seeThrough.thickness = pixels;
+  }
+  get lineThickness() {
+    return this.#lines.thickness;
+  }
 
   /**
    * Used when a scene contains no directional light of its own, so that a
@@ -55,6 +73,7 @@ export class VizRenderer {
   constructor(gl: WebGL2RenderingContext) {
     this.#gl = gl;
     this.#lines = new LineBatch(gl);
+    this.#seeThrough = new LineBatch(gl);
   }
 
   async init() {
@@ -83,6 +102,7 @@ export class VizRenderer {
     this.#transparent.length = 0;
     this.#lights.length = 0;
     this.#lines.clear();
+    this.#seeThrough.clear();
 
     this.#collect(root, view, options.skip);
 
@@ -95,9 +115,7 @@ export class VizRenderer {
     // Lines are opaque and write depth, so they go before the transparent
     // pass: a glass plane should tint the grid behind it, and be hidden by a
     // frustum edge in front of it.
-    const lineUniforms = this.#lineProgram!.use();
-    lineUniforms.uViewProjection = viewProjection;
-    this.#lines.flush();
+    this.#drawLines(viewProjection);
 
     // Transparent surfaces blend, so they are drawn last, back to front, and
     // must not write depth - otherwise they hide each other.
@@ -109,6 +127,7 @@ export class VizRenderer {
 
   dispose() {
     this.#lines.dispose();
+    this.#seeThrough.dispose();
     for (const mesh of this.#meshCache.values()) mesh.dispose();
     this.#meshCache.clear();
   }
@@ -118,6 +137,7 @@ export class VizRenderer {
 
     const collector: Collector = {
       lines: this.#lines,
+      seeThroughLines: this.#seeThrough,
       geometry: (key, build) => this.mesh(key, build),
       light: (info: LightInfo) => this.#lights.push(info),
       mesh: (mesh: GpuMesh, color: Color, options: MeshOptions = {}) => {
@@ -148,10 +168,41 @@ export class VizRenderer {
     // Gizmos push their lines in local space; the batch moves them to world
     // space so a wireframe cube is just the edges of a unit cube.
     this.#lines.transform = node.worldMatrix;
+    this.#seeThrough.transform = node.worldMatrix;
     node.collect(collector);
     this.#lines.transform = null;
+    this.#seeThrough.transform = null;
 
     for (const child of node.children) this.#collect(child, view, skip);
+  }
+
+  #drawLines(viewProjection: mat4) {
+    const gl = this.#gl;
+    if (this.#lines.segmentCount === 0 && this.#seeThrough.segmentCount === 0) return;
+
+    this.#lines.upload();
+    this.#seeThrough.upload();
+
+    const uniforms = this.#lineProgram!.use();
+    uniforms.uViewProjection = viewProjection;
+    uniforms.uThickness = this.#lines.thickness;
+    uniforms.uHalfViewport = [gl.drawingBufferWidth / 2, gl.drawingBufferHeight / 2];
+
+    // The hidden parts of the gizmos first, faintly, with the depth test
+    // inverted. They must not write depth, or they would hide the pass that
+    // draws the same lines where they are actually visible.
+    if (this.xray > 0) {
+      gl.depthFunc(gl.GREATER);
+      gl.depthMask(false);
+      uniforms.uOpacity = this.xray;
+      this.#seeThrough.draw();
+      gl.depthMask(true);
+      gl.depthFunc(gl.LEQUAL);
+    }
+
+    uniforms.uOpacity = 1;
+    this.#lines.draw();
+    this.#seeThrough.draw();
   }
 
   /**

@@ -7,6 +7,7 @@ import { VizRenderer } from "../render/renderer";
 import { Hud } from "../ui/hud";
 import { LabelOverlay, type LabelOptions, type LabelTarget } from "../ui/labels";
 import { pickNode } from "../ui/picking";
+import { readViewFromUrl, viewChanged, writeViewToUrl } from "../ui/viewlink";
 import type { Node } from "./node";
 import { VizScene } from "./scene";
 
@@ -43,6 +44,9 @@ export abstract class Playground implements GLScene {
   /** Show the legend and the controls help. */
   showHud = true;
 
+  /** Keep the viewpoint in the address bar, so a view can be linked to. */
+  shareViewInUrl = true;
+
   #inset: { camera: SceneCamera; widthFraction: number } | null = null;
   #labels: LabelOverlay | null = null;
   #hud: Hud | null = null;
@@ -69,7 +73,12 @@ export abstract class Playground implements GLScene {
 
     // setup() is where a demo places the viewer, so the controls pick up the
     // pose afterwards - and remember it as the view that "R" returns to.
+    // A viewpoint from the URL overrides it, but "R" still goes back to the
+    // view the demo was written around.
     this.controls.syncFromViewer().saveHome();
+    if (this.shareViewInUrl && readViewFromUrl(this.viewer)) {
+      this.controls.syncFromViewer();
+    }
 
     const canvas = ctx.gl.canvas as HTMLCanvasElement;
     this.#canvas = canvas;
@@ -155,7 +164,25 @@ export abstract class Playground implements GLScene {
 
     const canvas = ctx.gl.canvas as HTMLCanvasElement;
     this.#labels?.update(this.#viewProjection, canvas.clientWidth, canvas.clientHeight);
+
+    this.#updateViewLink(dt);
   };
+
+  #sinceUrlWrite = 0;
+  #lastWrittenView: number[] = [];
+  #updateViewLink(dt: number) {
+    if (!this.shareViewInUrl) return;
+
+    // Rewriting the URL on every frame of a camera move would be wasteful and
+    // would make the address bar flicker, so it settles first.
+    this.#sinceUrlWrite += dt;
+    if (this.#sinceUrlWrite < 0.4) return;
+    this.#sinceUrlWrite = 0;
+
+    if (!viewChanged(this.viewer, this.#lastWrittenView)) return;
+    this.#lastWrittenView = [...this.viewer.position, ...this.viewer.target];
+    writeViewToUrl(this.viewer);
+  }
 
   /**
    * Show what a scene camera actually sees, in a corner of the canvas.

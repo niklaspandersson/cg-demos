@@ -63,3 +63,20 @@ look at things) and one `SceneCamera` (whose field of view is the subject).
 * Gizmos push their lines in the **local space of their node**. The renderer
   applies the world matrix, so a wireframe cube really is just the twelve edges
   of a unit cube.
+
+## Lines
+
+* **Scenery uses `collector.lines`; gizmos use `collector.seeThroughLines`.**
+  The second kind still shows, faintly, where something solid is in front of
+  it. A frustum you cannot see because a box is in the way explains nothing;
+  a wireframe cube that ignores the wall in front of it is just confusing.
+* Line width is in **pixels** and is the same at any distance. Browsers clamp
+  `gl.lineWidth` to 1, so every segment is drawn as a screen-space quad
+  instead - which is why `LineBatch` is instanced.
+
+## Links
+
+A playground keeps the viewer's pose in the address bar, as
+`#<scene id>?view=px,py,pz,tx,ty,tz`. Set up a view, copy the URL, and the
+link reopens exactly that view of exactly that scene. `R` still resets to the
+view the demo was written around, not to the linked one.

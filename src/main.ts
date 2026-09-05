@@ -30,11 +30,32 @@ sceneView?.addEventListener("scene-loaded", ((e: CustomEvent) => {
   }
 }) as EventListener);
 
-/** Setup nav */
+/**
+ * The address bar decides which scene is showing, so a demo can be linked to
+ * directly. A playground appends its viewpoint after a "?", which makes it
+ * possible to link to a particular view of a particular scene.
+ *
+ *   #viz-view-frustum?view=7.3,6.9,10.4,0,1,0
+ */
+function sceneIdFromUrl() {
+  return decodeURIComponent(location.hash.replace(/^#/, "").split("?")[0]);
+}
+
+function showScene(sceneId: string) {
+  if (!sceneId || sceneId === currentSceneId) return;
+  currentSceneId = sceneId;
+  document.querySelector("scene-view")?.setAttribute("scene", sceneId);
+}
+
 document.querySelector("nav")?.addEventListener("click", (e) => {
   const sceneId = (e.target as HTMLElement).dataset?.["scene"];
-  if (sceneId) {
-    currentSceneId = sceneId;
-    document.querySelector("scene-view")?.setAttribute("scene", sceneId);
-  }
+  if (!sceneId) return;
+
+  // Dropping any old "?view=" is deliberate: the saved viewpoint belongs to
+  // the scene it was saved from.
+  if (sceneIdFromUrl() === sceneId) showScene(sceneId);
+  else location.hash = `#${sceneId}`;
 });
+
+window.addEventListener("hashchange", () => showScene(sceneIdFromUrl()));
+showScene(sceneIdFromUrl());

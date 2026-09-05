@@ -104,7 +104,7 @@ export class SceneCamera extends Node {
   }
 
   collect(collector: Collector) {
-    const { lines } = collector;
+    const { seeThroughLines: lines } = collector;
     const projection = this.projectionMatrix();
     const corners = frustumCorners(projection);
 
@@ -171,7 +171,7 @@ export class SceneCamera extends Node {
     const corners = frustumSlice(projection, ndcZ);
     if (!corners.length) return;
 
-    collector.lines.polyline(corners, color, true);
+    collector.seeThroughLines.polyline(corners, color, true);
     collector.mesh(collector.geometry("plane", planeMesh), [color[0], color[1], color[2], alpha], {
       unlit: true,
       local: sliceTransform(corners),
@@ -183,14 +183,14 @@ export class SceneCamera extends Node {
 
   #collectAxes(collector: Collector) {
     const s = this.axesSize;
-    collector.lines.line([0, 0, 0], [s, 0, 0], [0.9, 0.25, 0.25]);
-    collector.lines.line([0, 0, 0], [0, s, 0], [0.3, 0.85, 0.35]);
-    collector.lines.line([0, 0, 0], [0, 0, s], [0.35, 0.55, 1.0]);
+    collector.seeThroughLines.line([0, 0, 0], [s, 0, 0], [0.9, 0.25, 0.25]);
+    collector.seeThroughLines.line([0, 0, 0], [0, s, 0], [0.3, 0.85, 0.35]);
+    collector.seeThroughLines.line([0, 0, 0], [0, 0, s], [0.35, 0.55, 1.0]);
   }
 
   /** A box with a lens cone on the front, pointing down -z. */
   #collectBody(collector: Collector) {
-    const { lines } = collector;
+    const { seeThroughLines: lines } = collector;
     const w = 0.18;
     const h = 0.14;
     const back = 0.34;

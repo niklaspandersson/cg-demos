@@ -32,8 +32,20 @@ export type LightInfo = {
  * this frame, positioned by the node's world matrix.
  */
 export interface Collector {
-  /** Line segments, in the collecting node's local space. */
+  /**
+   * Line segments, in the collecting node's local space. Occluded normally:
+   * something behind a solid box is behind it.
+   */
   readonly lines: LineBatch;
+
+  /**
+   * The same, but the hidden parts still show faintly.
+   *
+   * The rule of thumb: scenery uses `lines`, gizmos use this one. A frustum
+   * or a light cone is an explanation drawn over the scene, and an
+   * explanation you cannot see because a box is in the way explains nothing.
+   */
+  readonly seeThroughLines: LineBatch;
 
   /**
    * Shared GPU geometry, uploaded the first time a given key is asked for.
