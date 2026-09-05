@@ -38,6 +38,14 @@ export class GLSceneView extends HTMLElement {
 
     this.#resizeObserver = new ResizeObserver(() => this.#syncCanvasSize());
     this.#resizeObserver.observe(this.#surface);
+
+    // A running scene can ask for a different canvas size - a demo that lets
+    // you fly out of it wants more room than the square it was written for.
+    this.addEventListener("scene-layout", (e) => {
+      const layout = (e as CustomEvent).detail?.layout;
+      this.toggleAttribute("responsive", layout === "fill");
+      this.#syncCanvasSize();
+    });
   }
 
   disconnectedCallback() {

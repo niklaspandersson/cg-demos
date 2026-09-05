@@ -80,3 +80,26 @@ A playground keeps the viewer's pose in the address bar, as
 `#<scene id>?view=px,py,pz,tx,ty,tz`. Set up a view, copy the URL, and the
 link reopens exactly that view of exactly that scene. `R` still resets to the
 view the demo was written around, not to the linked one.
+
+## Breaking loose from a demo's own camera
+
+A demo that renders through one fixed camera can hand its projection and view
+matrices to a `SceneInspector` and ask for matrices back. Attached, it gets
+the same two matrices it passed in and renders exactly as before. Detached,
+the geometry is drawn from a camera you fly yourself, and the demo's own
+camera becomes a frustum in the scene - the `Viewer`/`SceneCamera` split
+again, applied to a demo that only ever had one camera.
+
+Two things to know when wiring one up:
+
+* **The model matrices must be world-space.** A demo whose camera sits at the
+  origin already qualifies, because its view matrix is the identity - most of
+  these do. One that folds the view into each model matrix has to separate
+  them first.
+* **Pass `interest`**: roughly how far in front of the demo camera its content
+  sits. Most demos leave the far plane at 100 because nothing depends on it,
+  and framing the first detached view on that would leave the subject a speck.
+
+What the detached view reveals is the demo's own conventions, honestly. A
+shader that defines its light in view space turns out to have a headlight
+that follows whichever camera is rendering - which is a lesson, not a bug.

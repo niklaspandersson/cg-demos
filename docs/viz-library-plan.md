@@ -492,3 +492,42 @@ Still to write, when the course reaches them:
    a `Playground.update(dt, time)` hook for a demo that needs one, but no keyframe or path
    helper will be added to the library - that is exactly the feature creep this plan is trying
    to avoid.
+
+---
+
+## 11. Retrofitting the original demos
+
+The nine original scenes that have a camera can now break loose from it: a
+**Free camera** toggle in the controls panel detaches the view, the demo's
+geometry keeps running, and the camera it was written around appears as a
+frustum you can fly around.
+
+`SceneInspector` is the whole mechanism. A scene hands it the projection and
+view it would have used, and asks for matrices back:
+
+```ts
+this.#inspector.frame(dt, projection, view);
+
+uniforms.uProjectionMatrix = this.#inspector.projection(ctx);
+uniforms.uModelViewMatrix = this.#inspector.modelView(modelMatrix);
+
+this.#inspector.overlay(ctx);
+```
+
+Attached, those calls return exactly what was passed in, so the demo renders
+unchanged - same shaders, same matrices, same 512x512 canvas, and the shader
+editor still works while detached. Detached, the canvas stretches to the panel
+and the answers come from the free camera instead.
+
+Seven of the nine needed no change to their maths at all: their camera sits at
+the origin looking down -z, so the view matrix is the identity and their
+existing model-view matrices were already world-space model matrices.
+`view-transformation` already kept the two apart. Only
+`transformation-hierarchies` had to be restructured, because it composed each
+model matrix onto the view matrix as it went.
+
+**The scenes that do not get it**, and why: `basic-*`, `transformations-*` and
+`texturing-*` have no camera. They write to `gl_Position` directly, in clip
+space. There is nothing to break loose from, and giving them a camera would
+mean putting a matrix into the shaders those lessons are about - which would
+also vanish the moment a student edited one in the shader editor.

@@ -12,6 +12,8 @@ export { VizScene } from "./core/scene";
 export { Node, type NodeOptions } from "./core/node";
 export { Transform, type TransformOptions } from "./core/transform";
 
+export { SceneInspector, type SceneInspectorOptions } from "./inspect";
+
 export { Viewer, type ViewerOptions } from "./camera/viewer";
 export {
   ViewerControls,

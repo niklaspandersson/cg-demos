@@ -84,7 +84,16 @@ export class SceneCamera extends Node {
     this.show = { body: true, frustum: true, ...options.show };
   }
 
+  /**
+   * A projection matrix to use instead of building one from the fields above.
+   * Set this when the camera is standing in for one a demo built itself: the
+   * frustum then shows that demo's real projection, whatever it is.
+   */
+  projectionOverride: mat4 | null = null;
+
   projectionMatrix(out: mat4 = mat4.create()): mat4 {
+    if (this.projectionOverride) return mat4.copy(out, this.projectionOverride);
+
     if (this.projectionType === "orthographic") {
       const halfHeight = this.orthoHeight;
       const halfWidth = halfHeight * this.aspect;
@@ -134,6 +143,22 @@ export class SceneCamera extends Node {
     if (this.show.lookAtLine) {
       lines.dashed([0, 0, 0], [0, 0, -this.far], this.#dim(0.5), 0.12);
     }
+  }
+
+  /**
+   * Stand this camera where a given view matrix puts it.
+   *
+   * A view matrix takes the world into the camera's space, so its inverse is
+   * the camera's own place in the world. That one sentence is the whole
+   * relationship between a camera and its view matrix.
+   */
+  setFromViewMatrix(view: mat4) {
+    const world = mat4.invert(mat4.create(), view);
+    if (!world) return this;
+
+    mat4.getTranslation(this.transform.position, world);
+    mat4.getRotation(this.transform.orientation, world);
+    return this;
   }
 
   /**

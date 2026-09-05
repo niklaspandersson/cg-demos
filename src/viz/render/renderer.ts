@@ -110,6 +110,12 @@ export class VizRenderer {
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
+    // Line quads are wound whichever way the segment happens to run on
+    // screen, and surfaces here are lit on both sides, so face culling would
+    // only make gizmos disappear. A demo that turned it on keeps its own
+    // setting - it re-applies it every frame.
+    gl.disable(gl.CULL_FACE);
+
     this.#drawMeshes(this.#opaque, viewProjection);
 
     // Lines are opaque and write depth, so they go before the transparent
