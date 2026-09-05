@@ -31,6 +31,12 @@ export class GLContext {
     return geometry;
   }
 
+  #clearColor: [number, number, number, number] = [0, 0, 0, 1];
+  /** Background colour used by the render loop. Set it before rendering starts. */
+  set clearColor(color: [number, number, number, number]) {
+    this.#clearColor = color;
+  }
+
   constructor(canvas: HTMLCanvasElement) {
     const context = canvas.getContext("webgl2");
     if (!context) throw new Error("Failed to create webgl2 context");
@@ -54,11 +60,9 @@ export class GLContext {
   render(onFrame: (ctx: GLContext, dt: number, time: number) => void) {
     const gl = this.#context;
 
-    gl.viewport(0.0, 0.0, gl.canvas.width, gl.canvas.height);
     gl.enable(gl.DEPTH_TEST);
     gl.depthFunc(gl.LEQUAL);
     gl.clearDepth(1.0);
-    gl.clearColor(0, 0, 0, 1.0);
 
     let accTime = 0;
     let lastTime: number | undefined;
@@ -67,6 +71,11 @@ export class GLContext {
       lastTime ??= ts;
       const dt = ts - lastTime;
       accTime += dt;
+
+      // The canvas may be resized at any time, so the viewport is refreshed
+      // every frame rather than once at startup.
+      gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+      gl.clearColor(...this.#clearColor);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       onFrame(this, dt, accTime);
       this.#frameRequestId = requestAnimationFrame(frameCallback);
@@ -77,7 +86,7 @@ export class GLContext {
 
   stopRendering() {
     if (this.#frameRequestId) cancelAnimationFrame(this.#frameRequestId);
-    this.#frameRequestId = 0;
+    this.#frameRequestId = null;
     this.#programs = [];
   }
 }

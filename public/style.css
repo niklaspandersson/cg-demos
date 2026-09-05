@@ -53,6 +53,8 @@ nav {
 
 main {
   background-color: #ddd;
+  box-sizing: border-box;
+  width: 100%;
   max-width: 1440px;
   padding: 20px;
   gap: 20px;
@@ -65,6 +67,40 @@ main {
   align-self: stretch;
   display: flex;
   flex-direction: column;
+
+  scene-view {
+    display: block;
+  }
+
+  /* keeps the fixed-size scenes centred now that the panel is wider */
+  .scene-surface {
+    display: flex;
+    justify-content: center;
+  }
+
+  /* A "fill" scene takes over the panel instead of using a fixed square.
+     The height comes from an aspect ratio rather than from stretching, so a
+     long navigation column cannot turn the playground into a tall slot. */
+  scene-view[responsive] {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    max-height: calc(100vh - 180px);
+
+    .scene-surface {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      /* the playground handles dragging itself, so the browser must not
+         hijack pointer gestures for scrolling or zooming */
+      touch-action: none;
+    }
+  }
 
   .controls {
     background-color: #eee;

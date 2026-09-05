@@ -6,7 +6,11 @@ export type BuildProps = {
 
 export type VertexAttribute = "aPosition" | "aNormal" | "aColor" | "aTexCoord";
 
-const STANDARD_ATTRIB_LOCATIONS: Record<string, number> = {
+/**
+ * Every program built here binds these attribute names to fixed locations, so
+ * one piece of geometry can be drawn with any of them.
+ */
+export const STANDARD_ATTRIB_LOCATIONS: Record<string, number> = {
   aPosition: 0,
   aNormal: 1,
   aColor: 2,

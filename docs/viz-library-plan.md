@@ -410,9 +410,9 @@ Each phase ends with something demonstrable in a lecture.
 
 | Phase | Content | Ends with |
 | --- | --- | --- |
-| **0. Prep** | `dispose()`, canvas resize + DPR, pointer events, `GpuMesh`/VAO | An empty resizable playground scene that clears to a background colour |
-| **1. Core** | `Transform`, `Node`, `VizScene`, `LineBatch`, `VizRenderer`, line + surface shaders, primitives (grid, axes, wire box, wire plane, sphere) | A static scene of wireframe objects on a grid |
-| **2. Viewer** | `Viewer`, `ViewerControls` (orbit + fly + damping), `focus()`, reset | You can fly and orbit the Phase 1 scene |
+| **0. Prep** (done) | `dispose()`, canvas resize + DPR, pointer events, `GpuMesh`/VAO | An empty resizable playground scene that clears to a background colour |
+| **1. Core** (done) | `Transform`, `Node`, `VizScene`, `Viewer`, `LineBatch`, `VizRenderer`, line + surface shaders, primitives (grid, axes, wire box, wire plane, sphere) | A static scene of wireframe objects on a grid |
+| **2. Viewer controls** | `ViewerControls` (orbit + fly + damping), `focus()`, reset | You can fly and orbit the Phase 1 scene |
 | **3. Scene cameras** | `SceneCamera`, `frustumCorners()`, frustum / near / far / image-plane / axes / lookAt gizmos, **look-through inset viewport** | The "what is a view frustum" demo, perspective ⟷ orthographic |
 | **4. Lights** | `DirectionalLight`, `PointLight`, `SpotLight` + gizmos; lighting in the surface shader | The "three kinds of light" demo |
 | **5. Interaction** | HTML label overlay, double-click picking, HUD legend + entity list + controls help | Labelled diagrams; click any entity to orbit it |
@@ -421,6 +421,10 @@ Each phase ends with something demonstrable in a lecture.
 
 Phases 0–3 are the ones that deliver the core request; 4–7 are increments on a working thing.
 If time runs out, stopping after Phase 3 still leaves something genuinely useful.
+
+**Phases 0 and 1 are implemented.** `Viewer` moved from Phase 2 into Phase 1, because the
+renderer needs a view matrix before there is anything to look at; Phase 2 is now only the
+interactive controls. Until those exist, `viz-sandbox` drives the viewer from sliders.
 
 ---
 
@@ -468,15 +472,15 @@ Ordered roughly by the existing nav sections in `index.html`:
 
 ---
 
-## 10. Open questions
+## 10. Decisions
 
-1. **Canvas size.** Should the playground stretch to fill its panel (needs the CSS grid in
-   `style.css` to give it a real height), or stay a fixed larger square, e.g. 800×600? Affects
-   Phase 0 only.
-2. **Do these demos live in the existing nav** under a new "Visualisations" section, or in a
-   separate page (`index2.html` was removed in `b001ac1`, so presumably the same page)?
-3. **Naming**: `Playground`, `VizScene`, or something course-specific? It appears in every demo's
-   first line, so it is worth deciding before Phase 1.
-4. **Is `SceneCamera` ever animated by the demo** (e.g. a camera flying a path while you watch the
-   frustum sweep), or always static/slider-driven? The former wants a tiny keyframe helper in
-   Phase 6; the latter needs nothing.
+1. **Canvas size** - the playground fills its panel. A scene opts in with `layout: "fill"`;
+   every other scene keeps the fixed 512x512 canvas. Its height comes from a 16:10 aspect ratio
+   capped at `100vh - 180px` rather than from stretching, so the long navigation column cannot
+   squeeze the playground into a tall narrow slot.
+2. **Placement** - the same page, under a new "Visualisations" section in the nav.
+3. **Naming** - as proposed: `Playground`, `VizScene`, `Viewer`, `SceneCamera`.
+4. **Animation is deferred**, deliberately. A `SceneCamera` is static or slider-driven. There is
+   a `Playground.update(dt, time)` hook for a demo that needs one, but no keyframe or path
+   helper will be added to the library - that is exactly the feature creep this plan is trying
+   to avoid.
