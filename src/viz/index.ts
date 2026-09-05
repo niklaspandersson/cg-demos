@@ -54,6 +54,10 @@ export { LineBatch } from "./render/lines";
 export { GpuMesh, type MeshData } from "./render/mesh";
 export type { Collector, MeshOptions, LightInfo } from "./render/collector";
 
+export { LabelOverlay, type Label, type LabelOptions, type LabelTarget } from "./ui/labels";
+export { Hud } from "./ui/hud";
+export { pickNode } from "./ui/picking";
+
 export * as primitives from "./geometry/primitives";
 
 export { rgba, type Color, type Vec3Like } from "./types";

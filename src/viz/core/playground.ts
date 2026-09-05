@@ -1,8 +1,13 @@
+import { mat4 } from "gl-matrix";
 import type { GLContext, GLScene, ParameterDescriptor } from "../../gl";
 import type { SceneCamera } from "../entities/scenecamera";
 import { Viewer } from "../camera/viewer";
 import { ViewerControls } from "../camera/controls";
 import { VizRenderer } from "../render/renderer";
+import { Hud } from "../ui/hud";
+import { LabelOverlay, type LabelOptions, type LabelTarget } from "../ui/labels";
+import { pickNode } from "../ui/picking";
+import type { Node } from "./node";
 import { VizScene } from "./scene";
 
 /**
@@ -35,7 +40,15 @@ export abstract class Playground implements GLScene {
 
   background: [number, number, number, number] = [0.09, 0.1, 0.13, 1];
 
+  /** Show the legend and the controls help. */
+  showHud = true;
+
   #inset: { camera: SceneCamera; widthFraction: number } | null = null;
+  #labels: LabelOverlay | null = null;
+  #hud: Hud | null = null;
+  #surface: HTMLElement | null = null;
+  #canvas: HTMLCanvasElement | null = null;
+  #viewProjection = mat4.create();
 
   #renderer: VizRenderer | null = null;
   /** Available from `setup()` onwards. */
@@ -57,8 +70,70 @@ export abstract class Playground implements GLScene {
     // setup() is where a demo places the viewer, so the controls pick up the
     // pose afterwards - and remember it as the view that "R" returns to.
     this.controls.syncFromViewer().saveHome();
-    this.controls.attach(ctx.gl.canvas as HTMLCanvasElement);
+
+    const canvas = ctx.gl.canvas as HTMLCanvasElement;
+    this.#canvas = canvas;
+    this.controls.attach(canvas);
+    canvas.addEventListener("dblclick", this.#onDoubleClick);
+
+    // The overlays live next to the canvas rather than inside it.
+    this.#surface = canvas.parentElement;
+    if (this.#surface) {
+      this.#labels = new LabelOverlay(this.#surface);
+      for (const pending of this.#pendingLabels) {
+        this.#labels.add(pending.text, pending.target, pending.options);
+      }
+      this.#pendingLabels.length = 0;
+
+      if (this.showHud) {
+        this.#hud = new Hud(this.#surface, (node) => this.controls.focus(node));
+        this.scene.update();
+        this.#hud.setEntries(this.interesting());
+      }
+    }
   }
+
+  /**
+   * The nodes a demo bothered to name. Those are the ones worth listing in
+   * the legend and worth flying to when you click in the scene; unnamed
+   * scenery would only be noise.
+   */
+  interesting(): Node[] {
+    return [...this.scene.walk()].filter((node) => node !== this.scene && node.named);
+  }
+
+  /**
+   * Put a piece of text next to something. The target can be a node, a fixed
+   * point, or a function, which is how a label follows a near plane that a
+   * slider is moving.
+   */
+  label(text: string, target: LabelTarget, options: LabelOptions = {}) {
+    if (this.#labels) return this.#labels.add(text, target, options);
+
+    // setup() runs before the overlay exists, which is exactly where labels
+    // are most natural to write, so they queue up until it does.
+    this.#pendingLabels.push({ text, target, options });
+    return null;
+  }
+
+  #pendingLabels: { text: string; target: LabelTarget; options: LabelOptions }[] = [];
+
+  #onDoubleClick = (e: MouseEvent) => {
+    const canvas = this.#canvas;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const node = pickNode(
+      this.interesting(),
+      this.#viewProjection,
+      e.clientX - rect.left,
+      e.clientY - rect.top,
+      rect.width,
+      rect.height,
+    );
+
+    if (node) this.controls.focus(node);
+  };
 
   renderFrame = (ctx: GLContext, dt: number, time: number) => {
     const renderer = this.#renderer;
@@ -71,13 +146,15 @@ export abstract class Playground implements GLScene {
     const { drawingBufferWidth: width, drawingBufferHeight: height } = ctx.gl;
     const aspect = height > 0 ? width / height : 1;
 
-    renderer.render(
-      this.scene,
-      this.viewer.viewMatrix(),
-      this.viewer.projectionMatrix(aspect),
-    );
+    const view = this.viewer.viewMatrix();
+    const projection = this.viewer.projectionMatrix(aspect);
+    mat4.multiply(this.#viewProjection, projection, view);
 
+    renderer.render(this.scene, view, projection);
     this.#renderInset(ctx, renderer);
+
+    const canvas = ctx.gl.canvas as HTMLCanvasElement;
+    this.#labels?.update(this.#viewProjection, canvas.clientWidth, canvas.clientHeight);
   };
 
   /**
@@ -137,8 +214,16 @@ export abstract class Playground implements GLScene {
   }
 
   dispose() {
+    this.#canvas?.removeEventListener("dblclick", this.#onDoubleClick);
     this.controls.dispose();
+    this.#labels?.dispose();
+    this.#hud?.dispose();
     this.#renderer?.dispose();
+
+    this.#labels = null;
+    this.#hud = null;
+    this.#canvas = null;
+    this.#surface = null;
     this.#renderer = null;
   }
 

@@ -415,7 +415,7 @@ Each phase ends with something demonstrable in a lecture.
 | **2. Viewer controls** (done) | `ViewerControls` (orbit + fly + damping), `focus()`, reset | You can fly and orbit the Phase 1 scene |
 | **3. Scene cameras** (done) | `SceneCamera`, `frustumCorners()`, frustum / near / far / image-plane / axes / lookAt gizmos, **look-through inset viewport** | The "what is a view frustum" demo, perspective ⟷ orthographic |
 | **4. Lights** (done) | `DirectionalLight`, `PointLight`, `SpotLight` + gizmos; lighting in the surface shader | The "three kinds of light" demo |
-| **5. Interaction** | HTML label overlay, double-click picking, HUD legend + entity list + controls help | Labelled diagrams; click any entity to orbit it |
+| **5. Interaction** (done) | HTML label overlay, double-click picking, HUD legend + entity list + controls help | Labelled diagrams; click any entity to orbit it |
 | **6. Polish** | X-ray line pass (`depthFunc(GREATER)`, dimmed) so a frustum is visible through objects; transparent plane sorting; thick lines; **camera pose in the URL hash** so you can link to an exact viewpoint from lecture notes | Presentation-quality output |
 | **7. Demos** | Author the scenes in §8 | The course material |
 

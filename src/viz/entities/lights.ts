@@ -82,6 +82,10 @@ export class DirectionalLight extends Light {
     if (options.direction) this.setDirection(options.direction);
   }
 
+  focusRadius() {
+    return (this.show.length ?? 2.5) * 0.8;
+  }
+
   collect(collector: Collector) {
     const info: LightInfo = {
       kind: "directional",
@@ -155,6 +159,10 @@ export class PointLight extends Light {
     super({ name: "point light", ...options });
     this.range = options.range ?? 8;
     this.show = { star: true, rays: 12, length: 0.9, ...options.show };
+  }
+
+  focusRadius() {
+    return Math.max(1.5, (this.show.length ?? 0.9) * 2);
   }
 
   collect(collector: Collector) {
@@ -251,6 +259,10 @@ export class SpotLight extends Light {
     this.range = options.range ?? 10;
     this.show = { cone: true, innerCone: true, rays: 6, length: 4, ...options.show };
     if (options.direction) this.setDirection(options.direction);
+  }
+
+  focusRadius() {
+    return (this.show.length ?? 4) * 0.7;
   }
 
   collect(collector: Collector) {

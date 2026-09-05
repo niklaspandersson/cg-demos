@@ -65,6 +65,10 @@ export default class Scene extends Playground {
       }),
     );
 
+    this.label("directional", this.#directional, { offset: [0, 0.6, 0], color: [1, 0.93, 0.75] });
+    this.label("point", this.#point, { offset: [0, 1.1, 0], color: [0.6, 0.85, 1] });
+    this.label("spot", this.#spot, { offset: [0, 0.6, 0], color: [1, 0.75, 0.85] });
+
     // Something for each light to fall on.
     for (const x of [-6, 0, 6]) {
       this.scene.add(

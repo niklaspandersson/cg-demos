@@ -111,6 +111,84 @@ main {
         outline: none;
       }
     }
+
+    /* Labels and the legend sit over the canvas as ordinary HTML, which
+       keeps text crisp without any font machinery in the renderer. */
+    .viz-labels {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .viz-label {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      white-space: nowrap;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: #f0f2f6;
+      text-shadow:
+        0 1px 3px rgba(0, 0, 0, 0.9),
+        0 0 8px rgba(0, 0, 0, 0.7);
+    }
+
+    .viz-hud {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      max-width: 240px;
+      padding: 10px 12px;
+      border-radius: 6px;
+      background: rgba(12, 14, 20, 0.72);
+      color: #e8eaf0;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .viz-hud.is-empty .viz-legend {
+      display: none;
+    }
+
+    .viz-legend {
+      list-style: none;
+      margin: 0 0 6px;
+      padding: 0;
+
+      li {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      button {
+        border: none;
+        background: transparent;
+        padding: 1px 0;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+        text-align: left;
+
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+    }
+
+    .viz-swatch {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      flex: none;
+    }
+
+    .viz-help {
+      margin: 0;
+      opacity: 0.65;
+      font-size: 11px;
+    }
   }
 
   .controls {

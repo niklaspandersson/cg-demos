@@ -136,6 +136,21 @@ export class SceneCamera extends Node {
     }
   }
 
+  /**
+   * A point on the camera's view axis, `depth` units in front of it, in world
+   * space. The near plane is at `pointAtDepth(near)`, and a label put there
+   * follows the plane when a slider moves it.
+   */
+  pointAtDepth(depth: number, out: vec3 = vec3.create()): vec3 {
+    const m = this.worldMatrix;
+    return vec3.set(
+      out,
+      m[12] - m[8] * depth,
+      m[13] - m[9] * depth,
+      m[14] - m[10] * depth,
+    );
+  }
+
   /** Where this camera is aimed, in world space. Handy for labelling. */
   forward(out: vec3 = vec3.create()): vec3 {
     const m = this.worldMatrix;

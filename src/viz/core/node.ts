@@ -19,6 +19,8 @@ let nextId = 0;
 export class Node {
   readonly id = nextId++;
   name: string;
+  /** True when a demo gave this node a name, rather than it being generated. */
+  named: boolean;
   visible = true;
   readonly transform: Transform;
 
@@ -31,6 +33,7 @@ export class Node {
   constructor(options: NodeOptions = {}) {
     this.transform = new Transform(options);
     this.name = options.name ?? `node-${this.id}`;
+    this.named = options.name !== undefined;
     if (options.visible !== undefined) this.visible = options.visible;
   }
 

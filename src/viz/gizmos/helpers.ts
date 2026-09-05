@@ -13,12 +13,16 @@ export function grid(
   const size = options.size ?? 10;
   const step = options.step ?? 1;
 
-  return new LineNode({
+  const node = new LineNode({
     name: "grid",
     ...options,
     points: gridEdges(size, step),
     color: options.color ?? [0.55, 0.57, 0.62],
   });
+
+  // The default name is for debugging, not for the legend.
+  node.named = options.name !== undefined;
+  return node;
 }
 
 export type AxesOptions = NodeOptions & {
@@ -46,7 +50,11 @@ export class AxesNode extends Node {
   }
 }
 
-export const axes = (options: AxesOptions = {}) => new AxesNode(options);
+export const axes = (options: AxesOptions = {}) => {
+  const node = new AxesNode(options);
+  node.named = options.name !== undefined;
+  return node;
+};
 
 /**
  * A line with a small four-barb head, for showing a direction. Barbs are

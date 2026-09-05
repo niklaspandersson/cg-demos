@@ -54,7 +54,6 @@ export default class Scene extends Playground {
     for (let i = 0; i < 4; i++) {
       this.scene.add(
         new MeshNode({
-          name: `box-${i}`,
           shape: "box",
           wireframe: false,
           position: [(i % 2 ? 1 : -1) * 1.1, 0.5, 1.5 - i * 2.2],
@@ -64,10 +63,17 @@ export default class Scene extends Playground {
     }
 
     this.scene.add(
-      new MeshNode({ name: "far marker", shape: "sphere", position: [0, 0.6, -6.5], scale: 1.2 }),
+      new MeshNode({ shape: "sphere", position: [0, 0.6, -6.5], scale: 1.2 }),
     );
 
-    this.lookThrough(this.#camera);
+    // The labels sit on the camera's view axis, so they follow the sliders
+    // that move the planes.
+    const camera = this.#camera;
+    this.label("eye", camera, { offset: [0, 0.55, 0] });
+    this.label("near plane", () => camera.pointAtDepth(camera.near), { color: camera.color });
+    this.label("far plane", () => camera.pointAtDepth(camera.far), { color: camera.color });
+
+    this.lookThrough(camera);
   }
 
   get params(): ParameterDescriptor[] {
