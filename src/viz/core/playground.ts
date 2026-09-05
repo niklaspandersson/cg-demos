@@ -69,6 +69,14 @@ export abstract class Playground implements GLScene {
     this.#renderer = renderer;
 
     ctx.clearColor = this.background;
+
+    // The overlays are built before setup() runs, so a demo can add labels
+    // and get a handle back rather than a promise of one later.
+    const canvas = ctx.gl.canvas as HTMLCanvasElement;
+    this.#canvas = canvas;
+    this.#surface = canvas.parentElement;
+    if (this.#surface) this.#labels = new LabelOverlay(this.#surface);
+
     await this.setup(ctx);
 
     // setup() is where a demo places the viewer, so the controls pick up the
@@ -80,25 +88,13 @@ export abstract class Playground implements GLScene {
       this.controls.syncFromViewer();
     }
 
-    const canvas = ctx.gl.canvas as HTMLCanvasElement;
-    this.#canvas = canvas;
     this.controls.attach(canvas);
     canvas.addEventListener("dblclick", this.#onDoubleClick);
 
-    // The overlays live next to the canvas rather than inside it.
-    this.#surface = canvas.parentElement;
-    if (this.#surface) {
-      this.#labels = new LabelOverlay(this.#surface);
-      for (const pending of this.#pendingLabels) {
-        this.#labels.add(pending.text, pending.target, pending.options);
-      }
-      this.#pendingLabels.length = 0;
-
-      if (this.showHud) {
-        this.#hud = new Hud(this.#surface, (node) => this.controls.focus(node));
-        this.scene.update();
-        this.#hud.setEntries(this.interesting());
-      }
+    if (this.#surface && this.showHud) {
+      this.#hud = new Hud(this.#surface, (node) => this.controls.focus(node));
+      this.scene.update();
+      this.#hud.setEntries(this.interesting());
     }
   }
 
@@ -117,15 +113,8 @@ export abstract class Playground implements GLScene {
    * slider is moving.
    */
   label(text: string, target: LabelTarget, options: LabelOptions = {}) {
-    if (this.#labels) return this.#labels.add(text, target, options);
-
-    // setup() runs before the overlay exists, which is exactly where labels
-    // are most natural to write, so they queue up until it does.
-    this.#pendingLabels.push({ text, target, options });
-    return null;
+    return this.#labels?.add(text, target, options) ?? null;
   }
-
-  #pendingLabels: { text: string; target: LabelTarget; options: LabelOptions }[] = [];
 
   #onDoubleClick = (e: MouseEvent) => {
     const canvas = this.#canvas;

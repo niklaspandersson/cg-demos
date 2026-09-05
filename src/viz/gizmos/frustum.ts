@@ -86,3 +86,55 @@ export function sliceTransform(corners: vec3[], out: mat4 = mat4.create()): mat4
   mat4.scale(out, out, [width, height, 1]);
   return out;
 }
+
+/** A plane as [nx, ny, nz, d], where a point is inside when n.p + d >= 0. */
+export type Plane = [number, number, number, number];
+
+/**
+ * The six planes bounding a frustum, from a combined projection * view
+ * matrix, pointing inwards.
+ *
+ * Each plane is a sum or difference of two rows of the matrix. That falls
+ * straight out of what clipping tests: a point is inside the left plane when
+ * its clip-space x is at least -w, which is (row3 + row0) . p >= 0. The other
+ * five are the same argument for the other five bounds.
+ */
+export function frustumPlanes(viewProjection: mat4): Plane[] {
+  const m = viewProjection;
+  // gl-matrix stores columns, so row i column j is m[j * 4 + i].
+  const row = (i: number): Plane => [m[i], m[4 + i], m[8 + i], m[12 + i]];
+
+  const w = row(3);
+  const combine = (r: Plane, sign: number): Plane => {
+    const plane: Plane = [
+      w[0] + sign * r[0],
+      w[1] + sign * r[1],
+      w[2] + sign * r[2],
+      w[3] + sign * r[3],
+    ];
+    const length = Math.hypot(plane[0], plane[1], plane[2]) || 1;
+    return [plane[0] / length, plane[1] / length, plane[2] / length, plane[3] / length];
+  };
+
+  return [
+    combine(row(0), 1),  // left
+    combine(row(0), -1), // right
+    combine(row(1), 1),  // bottom
+    combine(row(1), -1), // top
+    combine(row(2), 1),  // near
+    combine(row(2), -1), // far
+  ];
+}
+
+/**
+ * Whether a sphere is at least partly inside. This is the test a renderer
+ * actually uses to cull: cheap, and wrong only in the harmless direction -
+ * it can keep something that turns out to be invisible, never drop something
+ * that would have been seen.
+ */
+export function sphereInFrustum(planes: Plane[], center: vec3, radius: number): boolean {
+  for (const [nx, ny, nz, d] of planes) {
+    if (nx * center[0] + ny * center[1] + nz * center[2] + d < -radius) return false;
+  }
+  return true;
+}

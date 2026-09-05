@@ -47,6 +47,9 @@ export {
   viewDepthToNdcZ,
   unproject,
   FRUSTUM_EDGES,
+  frustumPlanes,
+  sphereInFrustum,
+  type Plane,
 } from "./gizmos/frustum";
 
 export { VizRenderer } from "./render/renderer";

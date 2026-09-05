@@ -417,7 +417,7 @@ Each phase ends with something demonstrable in a lecture.
 | **4. Lights** (done) | `DirectionalLight`, `PointLight`, `SpotLight` + gizmos; lighting in the surface shader | The "three kinds of light" demo |
 | **5. Interaction** (done) | HTML label overlay, double-click picking, HUD legend + entity list + controls help | Labelled diagrams; click any entity to orbit it |
 | **6. Polish** (done) | X-ray line pass (`depthFunc(GREATER)`, dimmed) so a frustum is visible through objects; transparent plane sorting; thick lines; **camera pose in the URL hash** so you can link to an exact viewpoint from lecture notes | Presentation-quality output |
-| **7. Demos** | Author the scenes in §8 | The course material |
+| **7. Demos** (done) | Author the scenes in §8 | The course material |
 
 Phases 0–3 are the ones that deliver the core request; 4–7 are increments on a working thing.
 If time runs out, stopping after Phase 3 still leaves something genuinely useful.
@@ -428,28 +428,36 @@ interactive controls. Until those exist, `viz-sandbox` drives the viewer from sl
 
 ---
 
-## 8. Demos this unlocks
+## 8. Demos
 
-Ordered roughly by the existing nav sections in `index.html`:
+Built, under "Visualisations" in the nav:
 
-* **The view transformation** — a `SceneCamera` orbiting a fixed object, with the same scene shown
-  in the inset. Answers "does the camera move or does the world move?".
-* **Perspective vs. orthographic** — one toggle, the frustum morphs from pyramid to box.
-* **Near and far planes** — drag them; watch geometry get clipped, in the inset, live.
-* **Field of view** — the frustum widens; the inset shows the zoom.
-* **The projection plane** — the image plane inside the frustum, with lines from the eye through
-  an object's vertices to where they land on the plane. This is *the* picture for projective
-  transformation.
-* **Frustum culling** (a companion to `src/scenes/hsr-frustum-culling`) — objects change colour as
-  their bounds leave the frustum, seen from outside.
-* **Directional vs. point vs. spot light** — the three gizmos side by side.
-* **Phong from the outside** — the light, the surface normal, the view vector and the reflection
-  vector drawn as arrows on a surface point you can drag.
-* **Transformation hierarchies** — parented nodes with per-node axes.
-* **Shadow mapping** (later in the course) — the light's own frustum, drawn with the exact same
-  `SceneCamera` code, which is the point.
+* **The view frustum** (`viz-view-frustum`) - a camera with its view volume drawn and
+  its picture in the inset. Field of view, near and far planes on sliders, and one
+  checkbox that morphs the frustum between perspective and orthographic.
+* **The projection plane** (`viz-projection-plane`) - lines from the eye through every
+  corner of an object to where they cross the image plane. Slide the plane: the picture
+  changes size but not shape.
+* **The view transformation** (`viz-view-transformation`) - swing the camera around a
+  stationary object and watch the object swing in the inset instead. Does the camera
+  move, or does the world?
+* **Frustum culling** (`viz-frustum-culling`) - a field of objects, green when they
+  survive the six-plane test. The inset confirms the grey ones really are absent.
+* **Transformation hierarchies** (`viz-hierarchy`) - a three-link arm with axes on every
+  joint. Rotating the shoulder moves everything; rotating the wrist moves the hand.
+* **Phong from the outside** (`viz-phong-vectors`) - N, L, V and R drawn at a point on a
+  surface, with the two dot products as a live readout.
+* **Kinds of light** (`viz-lights`) - directional, point and spot side by side, each
+  switchable so you can see what it alone contributes.
+* **Playground sandbox** (`viz-sandbox`) - every entity and gizmo in one scene. If it
+  renders, the library works.
 
----
+Still to write, when the course reaches them:
+
+* Near and far planes, and field of view, as demos in their own right rather than sliders
+  on the frustum demo.
+* Shadow mapping - the light's own frustum, drawn with the same `SceneCamera` code, which
+  is the point.
 
 ## 9. Risks and how the plan handles them
 
