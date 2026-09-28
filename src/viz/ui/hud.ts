@@ -14,7 +14,11 @@ const HELP = [
  * What is actually reachable with a finger. Listing the mouse and keyboard
  * shortcuts on a phone would only advertise things that are not there.
  */
-const TOUCH_HELP = ["drag to orbit", "tap a name to fly to it"];
+const TOUCH_HELP = [
+  "drag to orbit",
+  "two fingers to pan and zoom",
+  "tap a name to fly to it",
+];
 
 /** Nodes that carry a colour can show a swatch in the legend. */
 function colorOf(node: Node): Color | null {

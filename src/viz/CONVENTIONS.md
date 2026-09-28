@@ -74,6 +74,17 @@ look at things) and one `SceneCamera` (whose field of view is the subject).
   `gl.lineWidth` to 1, so every segment is drawn as a screen-space quad
   instead - which is why `LineBatch` is instanced.
 
+## Input
+
+The viewer is driven by a mouse, a keyboard, or fingers. `ViewerControls` keeps
+one pointer map rather than one drag, so the three share a single set of
+handlers: one pointer orbits (or pans, if it is a mouse button other than the
+first), and two pointers pan and zoom together from their midpoint and spread.
+
+A touch screen has no second button and no wheel, which is why those two jobs
+land on the second finger. The HUD shows whichever set of instructions applies,
+chosen by a `(pointer: coarse)` query.
+
 ## Links
 
 A playground keeps the viewer's pose in the address bar, as

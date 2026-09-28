@@ -61,7 +61,7 @@ function offsetFromAngles(p: Pose, out: vec3) {
 }
 
 /**
- * Mouse and keyboard control of the `Viewer`.
+ * Mouse, touch and keyboard control of the `Viewer`.
  *
  *   left drag           orbit, or look around in fly mode
  *   right/middle drag   pan
@@ -69,6 +69,14 @@ function offsetFromAngles(p: Pose, out: vec3) {
  *   W A S D / Q E       fly, hold shift to go faster
  *   F                   switch between orbit and fly
  *   R                   back to the starting view
+ *
+ *   one finger          orbit
+ *   two fingers         pan by moving them, zoom by changing their spread
+ *
+ * A touch screen has no second mouse button and no wheel, so the two things
+ * those do are folded onto a second finger. Both fall out of the same pair of
+ * numbers - where the fingers are and how far apart they are - so they happen
+ * together, which is also how a pinch actually feels.
  *
  * Everything is damped: the camera eases towards where you told it to go
  * rather than snapping, which reads far better on a projector.
@@ -92,7 +100,10 @@ export class ViewerControls {
   /** The view `reset()` returns to. */
   #home = pose();
 
-  #drag: { pointerId: number; button: number; x: number; y: number } | null = null;
+  /** Every mouse button or finger currently down, by pointer id. */
+  #pointers = new Map<number, { x: number; y: number; button: number }>();
+  /** Spread and midpoint of two fingers, as of the last move. */
+  #gesture: { spread: number; x: number; y: number } | null = null;
   #keys = new Set<string>();
 
   #scratch = vec3.create();
@@ -192,7 +203,8 @@ export class ViewerControls {
     canvas.removeEventListener("blur", this.#onBlur);
 
     this.#canvas = null;
-    this.#drag = null;
+    this.#pointers.clear();
+    this.#gesture = null;
     this.#keys.clear();
     return this;
   }
@@ -281,35 +293,78 @@ export class ViewerControls {
     vec3.scaleAndAdd(wanted.target, wanted.target, up, dy * scale);
   }
 
+  /** Spread and midpoint of the first two pointers that are down. */
+  #measureGesture() {
+    const [a, b] = [...this.#pointers.values()];
+    return {
+      spread: Math.hypot(b.x - a.x, b.y - a.y),
+      x: (a.x + b.x) / 2,
+      y: (a.y + b.y) / 2,
+    };
+  }
+
+  /**
+   * Two fingers do what a mouse does with its other button and its wheel:
+   * moving them together pans, and changing their spread zooms.
+   */
+  #applyGesture() {
+    const previous = this.#gesture;
+    if (!previous) return;
+
+    const current = this.#measureGesture();
+    this.#gesture = current;
+
+    this.#pan(current.x - previous.x, current.y - previous.y);
+
+    // Below a pixel or so the ratio is noise rather than a pinch.
+    if (previous.spread > 1 && current.spread > 1) {
+      this.#dolly(previous.spread / current.spread);
+    }
+  }
+
+  /** Move closer or further away, within a sensible range. */
+  #dolly(factor: number) {
+    const wanted = this.#wanted;
+    wanted.distance = Math.min(1000, Math.max(0.2, wanted.distance * factor));
+  }
+
   #onPointerDown = (e: PointerEvent) => {
     if (!this.enabled) return;
     this.#canvas?.focus();
-    if (this.#drag) return;
 
-    this.#drag = { pointerId: e.pointerId, button: e.button, x: e.clientX, y: e.clientY };
+    this.#pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, button: e.button });
     this.#canvas?.setPointerCapture(e.pointerId);
+
+    if (this.#pointers.size >= 2) this.#gesture = this.#measureGesture();
     e.preventDefault();
   };
 
   #onPointerMove = (e: PointerEvent) => {
-    const drag = this.#drag;
-    if (!drag || drag.pointerId !== e.pointerId) return;
+    const pointer = this.#pointers.get(e.pointerId);
+    if (!pointer) return;
 
-    const dx = e.clientX - drag.x;
-    const dy = e.clientY - drag.y;
-    drag.x = e.clientX;
-    drag.y = e.clientY;
+    const dx = e.clientX - pointer.x;
+    const dy = e.clientY - pointer.y;
+    pointer.x = e.clientX;
+    pointer.y = e.clientY;
 
-    if (drag.button === 0) this.#rotate(dx, dy);
+    // A second finger takes over, because rotating would fight the pinch.
+    if (this.#pointers.size >= 2) this.#applyGesture();
+    else if (pointer.button === 0) this.#rotate(dx, dy);
     else this.#pan(dx, dy);
 
     e.preventDefault();
   };
 
   #onPointerUp = (e: PointerEvent) => {
-    if (this.#drag?.pointerId !== e.pointerId) return;
-    this.#canvas?.releasePointerCapture(e.pointerId);
-    this.#drag = null;
+    if (!this.#pointers.delete(e.pointerId)) return;
+    if (this.#canvas?.hasPointerCapture(e.pointerId)) {
+      this.#canvas.releasePointerCapture(e.pointerId);
+    }
+
+    // Lifting a finger re-measures instead of carrying the old spread over,
+    // which would otherwise register as one enormous pinch.
+    this.#gesture = this.#pointers.size >= 2 ? this.#measureGesture() : null;
   };
 
   #onWheel = (e: WheelEvent) => {
@@ -321,11 +376,7 @@ export class ViewerControls {
       return;
     }
 
-    const wanted = this.#wanted;
-    wanted.distance = Math.min(
-      1000,
-      Math.max(0.2, wanted.distance * Math.exp(e.deltaY * this.zoomSpeed)),
-    );
+    this.#dolly(Math.exp(e.deltaY * this.zoomSpeed));
   };
 
   #onContextMenu = (e: Event) => e.preventDefault();

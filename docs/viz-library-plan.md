@@ -295,6 +295,14 @@ lecture):
 | `F` | toggle fly mode | toggle back |
 | Double-click entity | orbit that entity | orbit that entity |
 | `R` | reset view | reset view |
+| One finger | orbit | look around |
+| Two fingers | move them to pan, change their spread to zoom | same |
+
+A touch screen has no second mouse button and no wheel, so the two things those do are folded
+onto a second finger. Both fall out of the same pair of numbers — where the fingers are and how
+far apart they are — so pan and zoom happen together, which is how a pinch actually feels. The
+HUD shows whichever set of instructions applies, chosen by a `(pointer: coarse)` query: listing
+`right-drag`, `scroll` and `F` on a phone would only advertise things that are not there.
 
 Both modes share one state (position + target); switching modes does not jump the camera. Motion
 is damped/smoothed — a camera that snaps looks broken on a projector.
