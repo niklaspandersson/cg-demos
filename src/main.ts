@@ -1,6 +1,7 @@
 import "./elements/sceneview.ts";
 import "./elements/shader-editor.ts";
 import { toControl } from "./elements/controls.ts";
+import { setupNavMenu } from "./elements/navmenu.ts";
 import { GLScene, GLSLProgram } from "./gl/index.ts";
 import { ShaderEditor } from "./elements/shader-editor.ts";
 
@@ -59,3 +60,5 @@ document.querySelector("nav")?.addEventListener("click", (e) => {
 
 window.addEventListener("hashchange", () => showScene(sceneIdFromUrl()));
 showScene(sceneIdFromUrl());
+
+setupNavMenu();

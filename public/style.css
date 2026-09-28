@@ -26,15 +26,26 @@ nav {
     border: none;
     background: transparent;
     cursor: pointer;
+    font: inherit;
+    color: inherit;
+    padding: 2px 0;
+    text-align: left;
   }
 
-  li:not(:has(ul)) {
+  /* a leaf entry with no button is a demo that has not been written yet */
+  li:not(:has(ul)):not(:has(button)) {
     text-decoration: line-through;
   }
 
-  li[data-scene] {
+  [data-scene] {
     cursor: pointer;
     text-decoration: underline;
+  }
+
+  button:focus-visible {
+    outline: 2px solid #0a58ca;
+    outline-offset: 2px;
+    border-radius: 2px;
   }
 
   ul {
@@ -44,11 +55,55 @@ nav {
 
 #global-header {
   display: flex;
-  align-items: baseline;
-  gap: 20px;
+  align-items: center;
+  gap: 16px;
   background: black;
   color: #eee;
   padding: 0 20px;
+}
+
+/* Shown only on small screens; see the media query at the end of this file. */
+#nav-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-left: -10px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+
+  svg {
+    width: 26px;
+    height: 26px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+  }
+
+  .icon-close {
+    display: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #eee;
+    outline-offset: -2px;
+  }
+}
+
+body[data-nav-open] #nav-toggle {
+  .icon-menu {
+    display: none;
+  }
+
+  .icon-close {
+    display: block;
+  }
 }
 
 main {
@@ -189,6 +244,22 @@ main {
       opacity: 0.65;
       font-size: 11px;
     }
+
+    /* one of the two help lines shows, depending on what the viewer has to
+       point with; a finger cannot right-drag, scroll or press F */
+    .viz-help-touch {
+      display: none;
+    }
+
+    @media (pointer: coarse) {
+      .viz-help {
+        display: none;
+      }
+
+      .viz-help-touch {
+        display: block;
+      }
+    }
   }
 
   .controls {
@@ -198,6 +269,7 @@ main {
     margin: 0;
     display: flex;
     flex-direction: row;
+    flex-wrap: wrap;
     justify-content: center;
 
     li {
@@ -299,5 +371,117 @@ main {
       font-size: 0.85em;
       white-space: pre-wrap;
     }
+  }
+}
+
+
+/*
+ * Small screens: the demo list becomes a drawer behind the hamburger.
+ *
+ * A column of thirty links takes the whole width of a phone, leaving no room
+ * for the thing those links open, so it slides in over the page instead and
+ * gets out of the way as soon as a demo is picked.
+ */
+@media (max-width: 860px) {
+  #nav-toggle {
+    display: inline-flex;
+  }
+
+  /* pinned, so the drawer below it keeps its place while the page scrolls */
+  #global-header {
+    position: sticky;
+    top: 0;
+    z-index: 25;
+
+    h2 {
+      font-size: 1.15rem;
+      margin: 10px 0;
+    }
+  }
+
+  main {
+    grid-template-columns: 1fr;
+    padding: 12px;
+    gap: 12px;
+  }
+
+  nav {
+    position: fixed;
+    top: var(--header-height, 56px);
+    left: 0;
+    bottom: 0;
+    z-index: 20;
+    box-sizing: border-box;
+    width: min(82vw, 320px);
+    padding: 4px 24px 32px;
+    background: #ddd;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    box-shadow: 2px 0 14px rgb(0 0 0 / 35%);
+
+    /* visibility keeps the closed drawer out of reach of tab and of a screen
+       reader, and is delayed so it does not cut the slide-out short */
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition:
+      transform 0.22s ease,
+      visibility 0s linear 0.22s;
+  }
+
+  body[data-nav-open] {
+    overflow: hidden;
+
+    nav {
+      transform: none;
+      visibility: visible;
+      transition: transform 0.22s ease;
+    }
+  }
+
+  #nav-backdrop {
+    position: fixed;
+    inset: var(--header-height, 56px) 0 0 0;
+    z-index: 19;
+    background: rgb(0 0 0 / 45%);
+  }
+
+  .scene-container {
+    .controls li {
+      padding: 10px 14px;
+    }
+
+    shader-editor header.tabs ul li {
+      padding: 12px;
+    }
+  }
+
+  /* a scene written for a 512px square still has to fit a phone */
+  scene-view:not([responsive]) canvas {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* and a playground is more use tall than wide on a narrow screen */
+  scene-view[responsive] {
+    aspect-ratio: 4 / 3;
+    max-height: 70vh;
+
+    .viz-hud {
+      top: 8px;
+      left: 8px;
+      max-width: 60%;
+      padding: 7px 9px;
+      font-size: 11px;
+    }
+
+    .viz-label {
+      font-size: 11px;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  nav {
+    transition: none;
   }
 }

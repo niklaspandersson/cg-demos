@@ -10,6 +10,12 @@ const HELP = [
   "R: reset view",
 ];
 
+/**
+ * What is actually reachable with a finger. Listing the mouse and keyboard
+ * shortcuts on a phone would only advertise things that are not there.
+ */
+const TOUCH_HELP = ["drag to orbit", "tap a name to fly to it"];
+
 /** Nodes that carry a colour can show a swatch in the legend. */
 function colorOf(node: Node): Color | null {
   const candidate = (node as unknown as { color?: Color }).color;
@@ -48,7 +54,11 @@ export class Hud {
     help.className = "viz-help";
     help.textContent = HELP.join("  ·  ");
 
-    this.#root.append(this.#legend, help);
+    const touchHelp = document.createElement("p");
+    touchHelp.className = "viz-help viz-help-touch";
+    touchHelp.textContent = TOUCH_HELP.join("  ·  ");
+
+    this.#root.append(this.#legend, help, touchHelp);
     container.appendChild(this.#root);
   }
 
