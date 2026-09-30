@@ -1,5 +1,6 @@
 import { mat4, vec3 } from "gl-matrix";
 import type { GLContext, ParameterDescriptor } from "../gl";
+import type { InsetRect } from "../gl/context";
 import { Viewer } from "./camera/viewer";
 import { ViewerControls } from "./camera/controls";
 import { VizScene } from "./core/scene";
@@ -31,6 +32,13 @@ export type SceneInspectorOptions = {
 
 const CAMERA_COLOR: Color = [0.35, 0.8, 1];
 
+/** Height of the picture-in-picture, as a share of the canvas height. */
+const PIP_SIZE = 0.3;
+/** Gap between the picture-in-picture and the canvas edge, in CSS pixels. */
+const PIP_MARGIN = 12;
+/** Width of the frame around it, in CSS pixels. */
+const PIP_BORDER = 2;
+
 /**
  * Lets an ordinary demo break loose from the camera it was written around.
  *
@@ -44,6 +52,10 @@ const CAMERA_COLOR: Color = [0.35, 0.8, 1];
  * was using appears in the scene as a frustum you can walk around. Its
  * picture is unchanged - the same objects, the same shaders, the same
  * matrices - you are simply no longer standing inside it.
+ *
+ * So you do not lose sight of what the demo is actually showing, a
+ * picture-in-picture in the bottom-right corner keeps drawing the scene
+ * through the demo camera while you fly around.
  *
  * This is the two-camera distinction the rest of the library is built on,
  * applied to a demo that only ever had one.
@@ -68,7 +80,24 @@ export class SceneInspector {
     this.controls.enabled = value;
     if (value) this.#frameTheCamera();
     this.#syncOverlays();
+    this.#syncPipCaption();
     this.#requestLayout(value ? "fill" : "fixed");
+  }
+
+  /** Whether the picture-in-picture shows while detached. */
+  #showPip = true;
+  /** True while the picture-in-picture pass is being drawn. */
+  #drawingPip = false;
+  #removePip: (() => void) | null = null;
+  #pipCaption: HTMLElement | null = null;
+
+  /**
+   * Whether the free camera is the one rendering right now. Inside the
+   * picture-in-picture it is not, even while detached: there the demo sees
+   * through its own camera again.
+   */
+  get #flying() {
+    return this.#detached && !this.#drawingPip;
   }
 
   #title: string;
@@ -113,6 +142,16 @@ export class SceneInspector {
     this.#canvas = ctx.gl.canvas as HTMLCanvasElement;
     this.#surface = this.#canvas.parentElement;
     this.controls.attach(this.#canvas);
+
+    // The picture-in-picture is the demo's whole renderFrame run a second
+    // time, into a corner, with this inspector answering as if attached.
+    this.#removePip = ctx.addInset({
+      rect: (gl) => this.#pipRect(gl),
+      borderColor: [...CAMERA_COLOR, 1] as [number, number, number, number],
+      borderWidth: Math.round(PIP_BORDER * (window.devicePixelRatio || 1)),
+      begin: () => (this.#drawingPip = true),
+      end: () => (this.#drawingPip = false),
+    });
   }
 
   /**
@@ -131,12 +170,12 @@ export class SceneInspector {
     // arbitrary.
     this.scene.update();
 
-    if (this.#detached) this.controls.update(dt);
+    if (this.#flying) this.controls.update(dt);
   }
 
   /** The projection to send to the demo's shader this frame. */
   projection(ctx: GLContext): mat4 {
-    if (!this.#detached) return this.#demoProjection;
+    if (!this.#flying) return this.#demoProjection;
 
     const { drawingBufferWidth: width, drawingBufferHeight: height } = ctx.gl;
     return this.viewer.projectionMatrix(height > 0 ? width / height : 1, this.#freeProjection);
@@ -144,7 +183,7 @@ export class SceneInspector {
 
   /** The view to send. */
   view(): mat4 {
-    return this.#detached ? this.viewer.viewMatrix(this.#modelView) : this.#demoView;
+    return this.#flying ? this.viewer.viewMatrix(this.#modelView) : this.#demoView;
   }
 
   /**
@@ -152,7 +191,7 @@ export class SceneInspector {
    * world space - the space the demo's own view matrix takes as input.
    */
   modelView(model: mat4, out: mat4 = mat4.create()): mat4 {
-    if (!this.#detached) return mat4.multiply(out, this.#demoView, model);
+    if (!this.#flying) return mat4.multiply(out, this.#demoView, model);
 
     return mat4.multiply(out, this.viewer.viewMatrix(), model);
   }
@@ -163,7 +202,7 @@ export class SceneInspector {
    */
   overlay(ctx: GLContext) {
     const renderer = this.#renderer;
-    if (!renderer || !this.#detached) return;
+    if (!renderer || !this.#flying) return;
 
     const gl = ctx.gl;
     const aspect = gl.drawingBufferHeight > 0
@@ -184,6 +223,8 @@ export class SceneInspector {
   }
 
   dispose() {
+    this.#removePip?.();
+    this.#pipCaption?.remove();
     this.controls.dispose();
     this.#hud?.dispose();
     this.#labels?.dispose();
@@ -192,6 +233,8 @@ export class SceneInspector {
 
     this.#hud = null;
     this.#labels = null;
+    this.#removePip = null;
+    this.#pipCaption = null;
     this.#renderer = null;
     this.#canvas = null;
     this.#surface = null;
@@ -206,7 +249,74 @@ export class SceneInspector {
         initial: this.#detached,
         update: (value: boolean) => (this.detached = value),
       },
+      {
+        title: "Show demo camera view",
+        description: "While flying, keep a small picture of what the demo camera sees",
+        type: "boolean",
+        initial: this.#showPip,
+        update: (value: boolean) => {
+          this.#showPip = value;
+          this.#syncPipCaption();
+        },
+      },
     ];
+  }
+
+  /**
+   * Where the picture-in-picture goes: the bottom-right corner, shaped like
+   * the demo camera's own image so its picture is not stretched.
+   */
+  #pipRect(gl: WebGL2RenderingContext): InsetRect | null {
+    if (!this.#detached || !this.#showPip) return null;
+
+    const { drawingBufferWidth: width, drawingBufferHeight: height } = gl;
+    const dpr = window.devicePixelRatio || 1;
+    const margin = Math.round(PIP_MARGIN * dpr);
+
+    // For both perspective and orthographic projections, the ratio of these
+    // two entries is the width / height the demo was written for.
+    const p = this.#demoProjection;
+    const aspect = p[0] !== 0 ? Math.abs(p[5] / p[0]) : 1;
+
+    let h = Math.round(height * PIP_SIZE);
+    let w = Math.round(h * aspect);
+    // On a narrow canvas, keep it from covering more than half the width.
+    if (w > width * 0.5) {
+      w = Math.round(width * 0.5);
+      h = Math.round(w / aspect);
+    }
+
+    const rect = { x: width - margin - w, y: margin, width: w, height: h };
+    this.#placePipCaption(rect, width);
+    return rect;
+  }
+
+  /** Put the caption just above the picture-in-picture. */
+  #placePipCaption(rect: InsetRect, bufferWidth: number) {
+    const caption = this.#pipCaption;
+    const canvas = this.#canvas;
+    if (!caption || !canvas || canvas.clientWidth === 0) return;
+
+    // Drawing-buffer pixels to CSS pixels.
+    const scale = canvas.clientWidth / bufferWidth;
+    caption.style.right = `${(bufferWidth - rect.x - rect.width) * scale}px`;
+    caption.style.bottom = `${(rect.y + rect.height) * scale + PIP_BORDER + 4}px`;
+  }
+
+  #syncPipCaption() {
+    const visible = this.#detached && this.#showPip && this.#surface;
+    if (!visible) {
+      this.#pipCaption?.remove();
+      this.#pipCaption = null;
+      return;
+    }
+
+    if (!this.#pipCaption) {
+      this.#pipCaption = document.createElement("div");
+      this.#pipCaption.className = "viz-pip-caption";
+      this.#pipCaption.textContent = "demo camera view";
+      this.#surface!.appendChild(this.#pipCaption);
+    }
   }
 
   /**
