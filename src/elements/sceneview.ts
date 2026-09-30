@@ -1,8 +1,12 @@
 import { GLContext, GLScene, GLSLProgram } from "../gl";
 
+const FIXED_SIZE = 512;
+
 const template = document.createElement("template");
 template.innerHTML = `
-<canvas width="512" height="512"></canvas>
+<div class="scene-surface">
+  <canvas width="${FIXED_SIZE}" height="${FIXED_SIZE}"></canvas>
+</div>
 `;
 
 export class GLSceneView extends HTMLElement {
@@ -15,12 +19,39 @@ export class GLSceneView extends HTMLElement {
     return this.#ctx;
   }
 
+  #canvas: HTMLCanvasElement;
+  #surface: HTMLElement;
+  #resizeObserver: ResizeObserver;
+  #scene: GLScene | null = null;
+  /** The scene currently running, or null while none is loaded. */
+  get currentScene() {
+    return this.#scene;
+  }
+
   constructor() {
     super();
     this.appendChild(template.content.cloneNode(true));
 
-    const canvas = this.querySelector("canvas") as HTMLCanvasElement;
-    this.#ctx = new GLContext(canvas);
+    this.#surface = this.querySelector(".scene-surface") as HTMLElement;
+    this.#canvas = this.querySelector("canvas") as HTMLCanvasElement;
+    this.#ctx = new GLContext(this.#canvas);
+
+    this.#resizeObserver = new ResizeObserver(() => this.#syncCanvasSize());
+    this.#resizeObserver.observe(this.#surface);
+
+    // A running scene can ask for a different canvas size - a demo that lets
+    // you fly out of it wants more room than the square it was written for.
+    this.addEventListener("scene-layout", (e) => {
+      const layout = (e as CustomEvent).detail?.layout;
+      this.toggleAttribute("responsive", layout === "fill");
+      this.#syncCanvasSize();
+    });
+  }
+
+  disconnectedCallback() {
+    this.#resizeObserver.disconnect();
+    this.#disposeScene();
+    this.#ctx.stopRendering();
   }
 
   async attributeChangedCallback(name: string, _: string, newValue: string) {
@@ -39,15 +70,48 @@ export class GLSceneView extends HTMLElement {
     }
   }
 
+  /**
+   * A "fill" scene stretches to the surrounding panel and follows the device
+   * pixel ratio, so it stays sharp on a high resolution display. Every other
+   * scene keeps the intrinsic square canvas it was written against.
+   */
+  #syncCanvasSize() {
+    const fill = this.hasAttribute("responsive");
+    if (!fill) {
+      this.#canvas.width = FIXED_SIZE;
+      this.#canvas.height = FIXED_SIZE;
+      return;
+    }
+
+    const dpr = window.devicePixelRatio || 1;
+    const width = Math.max(1, Math.round(this.#surface.clientWidth * dpr));
+    const height = Math.max(1, Math.round(this.#surface.clientHeight * dpr));
+
+    if (this.#canvas.width !== width) this.#canvas.width = width;
+    if (this.#canvas.height !== height) this.#canvas.height = height;
+  }
+
+  #disposeScene() {
+    this.#scene?.dispose?.();
+    this.#scene = null;
+  }
+
   async #renderScene(scene: GLScene) {
     this.#ctx.stopRendering();
+    this.#disposeScene();
+
+    this.toggleAttribute("responsive", scene.layout === "fill");
+    this.#syncCanvasSize();
+
     try {
       await scene.init(this.#ctx);
+      this.#scene = scene;
       this.#ctx.render(scene.renderFrame);
       this.#dispatchSceneLoaded(scene, this.#ctx.programs);
     } catch (e) {
       console.error(e);
       this.#ctx.stopRendering();
+      scene.dispose?.();
       this.#dispatchSceneLoaded(null);
     }
   }

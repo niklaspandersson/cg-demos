@@ -10,6 +10,15 @@ const toRGB = (hex: string) => {
   return [r, g, b];
 };
 
+const toHex = (rgb: [number, number, number]) => {
+  const channel = (v: number) =>
+    Math.round(Math.min(1, Math.max(0, v)) * 255)
+      .toString(16)
+      .padStart(2, "0");
+
+  return "#" + rgb.map(channel).join("");
+};
+
 const toId = (title: string) => title.toLowerCase().replace(/\s/g, "-");
 
 export function toControl(param: ParameterDescriptor) {
@@ -18,8 +27,12 @@ export function toControl(param: ParameterDescriptor) {
   const id = toId(title);
 
   if (param.type === "color") {
+    const initial = Array.isArray(param.initial)
+      ? toHex(param.initial as [number, number, number])
+      : "#ff0000";
+
     el.innerHTML = `<label for="${id}">${title}:</label>
-      <input type="color" id="${id}" name="${id}" value="#ff0000">`;
+      <input type="color" id="${id}" name="${id}" value="${initial}">`;
   } else if (param.type === "number") {
     const min = param.min || 0;
     const max = param.max || 1;
@@ -29,8 +42,9 @@ export function toControl(param: ParameterDescriptor) {
     el.innerHTML = `<label for="${id}">${title}:</label>
     <input type="range" id="${id}" name="${id}" value="${value}" min="${min}" max="${max}" step="${step}">`;
   } else if (param.type === "boolean") {
+    const checked = param.initial === true ? " checked" : "";
     el.innerHTML = `<label for="${id}">${title}:</label>
-    <input type="checkbox" id="${id}" name="${id}">`;
+    <input type="checkbox" id="${id}" name="${id}"${checked}>`;
   }
 
   if (param.type === "color") {
@@ -39,11 +53,11 @@ export function toControl(param: ParameterDescriptor) {
       param.update(toRGB(value));
     });
   } else {
-    el.querySelector("input")?.addEventListener("change", (e: Event) => {
+    el.querySelector("input")?.addEventListener("input", (e: Event) => {
       if (param.type === "boolean") {
         param.update((e.target as HTMLInputElement).checked);
       } else if (param.type === "number") {
-        param.update((e.target as HTMLInputElement).value);
+        param.update(Number((e.target as HTMLInputElement).value));
       }
     });
   }

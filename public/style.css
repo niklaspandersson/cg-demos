@@ -26,15 +26,26 @@ nav {
     border: none;
     background: transparent;
     cursor: pointer;
+    font: inherit;
+    color: inherit;
+    padding: 2px 0;
+    text-align: left;
   }
 
-  li:not(:has(ul)) {
+  /* a leaf entry with no button is a demo that has not been written yet */
+  li:not(:has(ul)):not(:has(button)) {
     text-decoration: line-through;
   }
 
-  li[data-scene] {
+  [data-scene] {
     cursor: pointer;
     text-decoration: underline;
+  }
+
+  button:focus-visible {
+    outline: 2px solid #0a58ca;
+    outline-offset: 2px;
+    border-radius: 2px;
   }
 
   ul {
@@ -44,15 +55,61 @@ nav {
 
 #global-header {
   display: flex;
-  align-items: baseline;
-  gap: 20px;
+  align-items: center;
+  gap: 16px;
   background: black;
   color: #eee;
   padding: 0 20px;
 }
 
+/* Shown only on small screens; see the media query at the end of this file. */
+#nav-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-left: -10px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+
+  svg {
+    width: 26px;
+    height: 26px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+  }
+
+  .icon-close {
+    display: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #eee;
+    outline-offset: -2px;
+  }
+}
+
+body[data-nav-open] #nav-toggle {
+  .icon-menu {
+    display: none;
+  }
+
+  .icon-close {
+    display: block;
+  }
+}
+
 main {
   background-color: #ddd;
+  box-sizing: border-box;
+  width: 100%;
   max-width: 1440px;
   padding: 20px;
   gap: 20px;
@@ -66,6 +123,145 @@ main {
   display: flex;
   flex-direction: column;
 
+  scene-view {
+    display: block;
+  }
+
+  /* keeps the fixed-size scenes centred now that the panel is wider */
+  .scene-surface {
+    display: flex;
+    justify-content: center;
+  }
+
+  /* A "fill" scene takes over the panel instead of using a fixed square.
+     The height comes from an aspect ratio rather than from stretching, so a
+     long navigation column cannot turn the playground into a tall slot. */
+  scene-view[responsive] {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    max-height: calc(100vh - 180px);
+
+    .scene-surface {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      /* the playground handles dragging itself, so the browser must not
+         hijack pointer gestures for scrolling or zooming */
+      touch-action: none;
+      cursor: grab;
+
+      &:active {
+        cursor: grabbing;
+      }
+
+      /* it is focusable so it can receive the keyboard, but the focus ring
+         over the scene would just be noise */
+      &:focus {
+        outline: none;
+      }
+    }
+
+    /* Labels and the legend sit over the canvas as ordinary HTML, which
+       keeps text crisp without any font machinery in the renderer. */
+    .viz-labels {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .viz-label {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      white-space: nowrap;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: #f0f2f6;
+      text-shadow:
+        0 1px 3px rgba(0, 0, 0, 0.9),
+        0 0 8px rgba(0, 0, 0, 0.7);
+    }
+
+    .viz-hud {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      max-width: 240px;
+      padding: 10px 12px;
+      border-radius: 6px;
+      background: rgba(12, 14, 20, 0.72);
+      color: #e8eaf0;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .viz-hud.is-empty .viz-legend {
+      display: none;
+    }
+
+    .viz-legend {
+      list-style: none;
+      margin: 0 0 6px;
+      padding: 0;
+
+      li {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      button {
+        border: none;
+        background: transparent;
+        padding: 1px 0;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+        text-align: left;
+
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+    }
+
+    .viz-swatch {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      flex: none;
+    }
+
+    .viz-help {
+      margin: 0;
+      opacity: 0.65;
+      font-size: 11px;
+    }
+
+    /* one of the two help lines shows, depending on what the viewer has to
+       point with; a finger cannot right-drag, scroll or press F */
+    .viz-help-touch {
+      display: none;
+    }
+
+    @media (pointer: coarse) {
+      .viz-help {
+        display: none;
+      }
+
+      .viz-help-touch {
+        display: block;
+      }
+    }
+  }
+
   .controls {
     background-color: #eee;
     list-style-type: none;
@@ -73,6 +269,7 @@ main {
     margin: 0;
     display: flex;
     flex-direction: row;
+    flex-wrap: wrap;
     justify-content: center;
 
     li {
@@ -174,5 +371,117 @@ main {
       font-size: 0.85em;
       white-space: pre-wrap;
     }
+  }
+}
+
+
+/*
+ * Small screens: the demo list becomes a drawer behind the hamburger.
+ *
+ * A column of thirty links takes the whole width of a phone, leaving no room
+ * for the thing those links open, so it slides in over the page instead and
+ * gets out of the way as soon as a demo is picked.
+ */
+@media (max-width: 860px) {
+  #nav-toggle {
+    display: inline-flex;
+  }
+
+  /* pinned, so the drawer below it keeps its place while the page scrolls */
+  #global-header {
+    position: sticky;
+    top: 0;
+    z-index: 25;
+
+    h2 {
+      font-size: 1.15rem;
+      margin: 10px 0;
+    }
+  }
+
+  main {
+    grid-template-columns: 1fr;
+    padding: 12px;
+    gap: 12px;
+  }
+
+  nav {
+    position: fixed;
+    top: var(--header-height, 56px);
+    left: 0;
+    bottom: 0;
+    z-index: 20;
+    box-sizing: border-box;
+    width: min(82vw, 320px);
+    padding: 4px 24px 32px;
+    background: #ddd;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    box-shadow: 2px 0 14px rgb(0 0 0 / 35%);
+
+    /* visibility keeps the closed drawer out of reach of tab and of a screen
+       reader, and is delayed so it does not cut the slide-out short */
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition:
+      transform 0.22s ease,
+      visibility 0s linear 0.22s;
+  }
+
+  body[data-nav-open] {
+    overflow: hidden;
+
+    nav {
+      transform: none;
+      visibility: visible;
+      transition: transform 0.22s ease;
+    }
+  }
+
+  #nav-backdrop {
+    position: fixed;
+    inset: var(--header-height, 56px) 0 0 0;
+    z-index: 19;
+    background: rgb(0 0 0 / 45%);
+  }
+
+  .scene-container {
+    .controls li {
+      padding: 10px 14px;
+    }
+
+    shader-editor header.tabs ul li {
+      padding: 12px;
+    }
+  }
+
+  /* a scene written for a 512px square still has to fit a phone */
+  scene-view:not([responsive]) canvas {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* and a playground is more use tall than wide on a narrow screen */
+  scene-view[responsive] {
+    aspect-ratio: 4 / 3;
+    max-height: 70vh;
+
+    .viz-hud {
+      top: 8px;
+      left: 8px;
+      max-width: 60%;
+      padding: 7px 9px;
+      font-size: 11px;
+    }
+
+    .viz-label {
+      font-size: 11px;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  nav {
+    transition: none;
   }
 }

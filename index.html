@@ -11,19 +11,33 @@
   <body>
     <header id="global-header">
       <!-- <h1>2dt904 - Computer Graphics</h1> -->
+      <button
+        id="nav-toggle"
+        type="button"
+        aria-controls="demo-nav"
+        aria-expanded="false"
+        aria-label="Show demo menu"
+      >
+        <svg class="icon-menu" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3 6h18M3 12h18M3 18h18" />
+        </svg>
+        <svg class="icon-close" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 5l14 14M19 5L5 19" />
+        </svg>
+      </button>
       <h2>WebGL demos</h2>
     </header>
     <main>
-      <nav>
+      <nav id="demo-nav" aria-label="Demos">
         <section>
           <header>
             <h3>Basic concepts</h3>
           </header>
           <ul>
-            <li data-scene="basic-shaders">Shaders</li>
-            <li data-scene="basic-attributes">Vertex attributes</li>
-            <li data-scene="basic-uniforms">Uniform values</li>
-            <li data-scene="basic-animations">Time based animations</li>
+            <li><button type="button" data-scene="basic-shaders">Shaders</button></li>
+            <li><button type="button" data-scene="basic-attributes">Vertex attributes</button></li>
+            <li><button type="button" data-scene="basic-uniforms">Uniform values</button></li>
+            <li><button type="button" data-scene="basic-animations">Time based animations</button></li>
           </ul>
         </section>
         <section>
@@ -34,25 +48,25 @@
             <li>
               <h4>Affine transformations</h4>
               <ul>
-                <li data-scene="transformations-translation">Translation</li>
-                <li data-scene="transformations-rotation">Rotation</li>
-                <li data-scene="transformations-scale">Scale</li>
-                <li data-scene="transformations-combined">Combined transformations</li>
+                <li><button type="button" data-scene="transformations-translation">Translation</button></li>
+                <li><button type="button" data-scene="transformations-rotation">Rotation</button></li>
+                <li><button type="button" data-scene="transformations-scale">Scale</button></li>
+                <li><button type="button" data-scene="transformations-combined">Combined transformations</button></li>
               </ul>
             </li>
             <li>
               <h4>Projection transformations</h4>
               <ul>
-                <li data-scene="projection-orthographic">Orthographic projection</li>
-                <li data-scene="projection-perspective">Perspective projection</li>
+                <li><button type="button" data-scene="projection-orthographic">Orthographic projection</button></li>
+                <li><button type="button" data-scene="projection-perspective">Perspective projection</button></li>
               </ul>
             </li>
             <li>
               <h4>Changing coordinate systems</h4>
               <ul>
-                <li data-scene="view-transformation">The view transformation</li>
-                <li data-scene="local-transformations">Local transformations</li>
-                <li data-scene="transformation-hierarchies">Transformation hierarchies</li>
+                <li><button type="button" data-scene="view-transformation">The view transformation</button></li>
+                <li><button type="button" data-scene="local-transformations">Local transformations</button></li>
+                <li><button type="button" data-scene="transformation-hierarchies">Transformation hierarchies</button></li>
               </ul>
             </li>
           </ul>
@@ -62,10 +76,10 @@
             <h3>Images and texturing</h3>
           </header>
           <ul>
-            <li data-scene="texturing-basics">Basic texturing</li>
-            <li data-scene="texturing-uv">UV-coordinates</li>
-            <li data-scene="texturing-filtering">Texture filtering</li>
-            <li data-scene="texturing-wrapping">Wrapping modes</li>
+            <li><button type="button" data-scene="texturing-basics">Basic texturing</button></li>
+            <li><button type="button" data-scene="texturing-uv">UV-coordinates</button></li>
+            <li><button type="button" data-scene="texturing-filtering">Texture filtering</button></li>
+            <li><button type="button" data-scene="texturing-wrapping">Wrapping modes</button></li>
           </ul>
         </section>
         <section>
@@ -73,9 +87,24 @@
             <h3>Hidden surface removal</h3>
           </header>
           <ul>
-            <li data-scene="hsr-backface-culling">Back face culling</li>
-            <li data-scene="hsr-depth-buffer">Depth buffer</li>
-            <li data-scene="hsr-frustum-culling">Frustum culling</li>
+            <li><button type="button" data-scene="hsr-backface-culling">Back face culling</button></li>
+            <li><button type="button" data-scene="hsr-depth-buffer">Depth buffer</button></li>
+            <li><button type="button" data-scene="hsr-frustum-culling">Frustum culling</button></li>
+          </ul>
+        </section>
+        <section>
+          <header>
+            <h3>Visualisations</h3>
+          </header>
+          <ul>
+            <li><button type="button" data-scene="viz-view-frustum">The view frustum</button></li>
+            <li><button type="button" data-scene="viz-projection-plane">The projection plane</button></li>
+            <li><button type="button" data-scene="viz-view-transformation">The view transformation</button></li>
+            <li><button type="button" data-scene="viz-frustum-culling">Frustum culling</button></li>
+            <li><button type="button" data-scene="viz-hierarchy">Transformation hierarchies</button></li>
+            <li><button type="button" data-scene="viz-phong-vectors">Phong from the outside</button></li>
+            <li><button type="button" data-scene="viz-lights">Kinds of light</button></li>
+            <li><button type="button" data-scene="viz-sandbox">Playground sandbox</button></li>
           </ul>
         </section>
         <section>
@@ -83,10 +112,11 @@
             <h3>Lighting</h3>
           </header>
           <ul>
-            <li data-scene="phong-diffuse">The phong lighting model</li>
+            <li><button type="button" data-scene="phong-diffuse">The phong lighting model</button></li>
           </ul>
         </section>
       </nav>
+      <div id="nav-backdrop" hidden></div>
       <article class="scene-container">
         <ul class="controls"></ul>
         <scene-view></scene-view>

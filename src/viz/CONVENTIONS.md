@@ -1,0 +1,116 @@
+# Conventions used by `src/viz`
+
+Every value in this library follows these rules. If something here surprises
+you, that is a bug in the library, not in your demo.
+
+## The two cameras
+
+This is the distinction that causes the most confusion, so the library keeps
+the two apart by name, everywhere:
+
+| | `Viewer` | `SceneCamera` |
+| --- | --- | --- |
+| What it is | the camera **you look through** | a camera **you are looking at** |
+| Part of the scene? | no | yes, it is a `Node` |
+| Drawn? | never | yes, with its frustum and axes |
+| Belongs to | the `Playground` | the `VizScene` |
+| How many | exactly one | zero or more |
+
+A demo about, say, field of view has one `Viewer` (so you can walk around and
+look at things) and one `SceneCamera` (whose field of view is the subject).
+
+## Space
+
+* Right-handed, **y up**, **-z forward**.
+* A camera - either kind - looks along **its own -z axis**. That is the same
+  direction `mat4.lookAt` looks along, and the reason `Transform.lookAt()`
+  aims -z at its target.
+* The ground plane is **xz**, at y = 0. `grid()` lies in it.
+
+## Matrices
+
+* All matrices are `gl-matrix` `mat4`: column-major, applied as `M * v`.
+* A node's world matrix is `parentWorld * local`, rebuilt once per frame by
+  `VizScene.update()`. Nothing is cached between frames, so you can change a
+  transform at any point and the next frame picks it up.
+* Normalised device coordinates run from **-1 to +1 on all three axes**,
+  including z. This is the OpenGL/WebGL convention; Direct3D, Vulkan and WebGPU
+  use 0..1 for depth instead. Anything that unprojects NDC corners - the
+  frustum gizmo above all - depends on this.
+
+## Units
+
+* **Angles in the public API are degrees.** `fov: 45`, `rotation: [0, 90, 0]`.
+  Radians only appear inside the library, immediately before a call that needs
+  them.
+* Rotations are given as Euler angles in degrees, in `gl-matrix`'s default
+  order. For anything where the order would matter, use `lookAt` instead.
+* Distances are unitless. Treat 1 as "about the size of one object", and keep
+  scenes within roughly 10 units of the origin so the default viewer framing
+  works.
+
+## Colours
+
+* `[r, g, b]` or `[r, g, b, a]`, each channel 0..1.
+* An alpha below 1 puts a surface in the transparent pass, which is drawn back
+  to front and does not write depth.
+
+## Geometry
+
+* Primitives are built at **unit size, centred on the origin**: the box runs
+  from -0.5 to +0.5, the sphere has radius 0.5, the plane is a unit square in
+  xy facing +z. Scale the node to resize them.
+* Gizmos push their lines in the **local space of their node**. The renderer
+  applies the world matrix, so a wireframe cube really is just the twelve edges
+  of a unit cube.
+
+## Lines
+
+* **Scenery uses `collector.lines`; gizmos use `collector.seeThroughLines`.**
+  The second kind still shows, faintly, where something solid is in front of
+  it. A frustum you cannot see because a box is in the way explains nothing;
+  a wireframe cube that ignores the wall in front of it is just confusing.
+* Line width is in **pixels** and is the same at any distance. Browsers clamp
+  `gl.lineWidth` to 1, so every segment is drawn as a screen-space quad
+  instead - which is why `LineBatch` is instanced.
+
+## Input
+
+The viewer is driven by a mouse, a keyboard, or fingers. `ViewerControls` keeps
+one pointer map rather than one drag, so the three share a single set of
+handlers: one pointer orbits (or pans, if it is a mouse button other than the
+first), and two pointers pan and zoom together from their midpoint and spread.
+
+A touch screen has no second button and no wheel, which is why those two jobs
+land on the second finger. The HUD shows whichever set of instructions applies,
+chosen by a `(pointer: coarse)` query.
+
+## Links
+
+A playground keeps the viewer's pose in the address bar, as
+`#<scene id>?view=px,py,pz,tx,ty,tz`. Set up a view, copy the URL, and the
+link reopens exactly that view of exactly that scene. `R` still resets to the
+view the demo was written around, not to the linked one.
+
+## Breaking loose from a demo's own camera
+
+A demo that renders through one fixed camera can hand its projection and view
+matrices to a `SceneInspector` and ask for matrices back. Attached, it gets
+the same two matrices it passed in and renders exactly as before. Detached,
+the geometry is drawn from a camera you fly yourself, and the demo's own
+camera becomes a frustum in the scene - the `Viewer`/`SceneCamera` split
+again, applied to a demo that only ever had one camera.
+
+Two things to know when wiring one up:
+
+* **The model matrices must be world-space.** A demo whose camera sits at the
+  origin already qualifies, because its view matrix is the identity - most of
+  these do. One that folds the view into each model matrix has to separate
+  them first.
+* **Pass `interest`**: roughly how far in front of the demo camera its content
+  sits. Most demos leave the far plane at 100 because nothing depends on it,
+  and framing the first detached view on that would leave the subject a speck.
+
+What the detached view reveals is the demo's own conventions, honestly. A
+shader that defines its light in view space turns out to have a headlight
+that follows whichever camera is rendering - which is a lesson, not a bug.
