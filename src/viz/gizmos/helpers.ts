@@ -28,6 +28,12 @@ export function grid(
 export type AxesOptions = NodeOptions & {
   /** Length of each arm. */
   size?: number;
+  /**
+   * Keep the arms faintly visible through whatever is in front of them. Useful
+   * when the origin they belong to is inside a solid object, which is exactly
+   * where an origin usually is.
+   */
+  seeThrough?: boolean;
 };
 
 /**
@@ -36,17 +42,20 @@ export type AxesOptions = NodeOptions & {
  */
 export class AxesNode extends Node {
   size: number;
+  seeThrough: boolean;
 
   constructor(options: AxesOptions = {}) {
     super({ name: "axes", ...options });
     this.size = options.size ?? 1;
+    this.seeThrough = options.seeThrough ?? false;
   }
 
   collect(collector: Collector) {
     const s = this.size;
-    collector.lines.line([0, 0, 0], [s, 0, 0], [0.9, 0.25, 0.25]);
-    collector.lines.line([0, 0, 0], [0, s, 0], [0.3, 0.85, 0.35]);
-    collector.lines.line([0, 0, 0], [0, 0, s], [0.35, 0.55, 1.0]);
+    const lines = this.seeThrough ? collector.seeThroughLines : collector.lines;
+    lines.line([0, 0, 0], [s, 0, 0], [0.9, 0.25, 0.25]);
+    lines.line([0, 0, 0], [0, s, 0], [0.3, 0.85, 0.35]);
+    lines.line([0, 0, 0], [0, 0, s], [0.35, 0.55, 1.0]);
   }
 }
 

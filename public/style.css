@@ -189,6 +189,77 @@ main {
         0 0 8px rgba(0, 0, 0, 0.7);
     }
 
+    /* The step panel sits along the bottom, opposite the legend, because both
+       want a corner and a caption is read left to right. */
+    .viz-stages {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      max-width: 520px;
+      padding: 10px 12px;
+      border-radius: 6px;
+      background: rgba(12, 14, 20, 0.78);
+      color: #e8eaf0;
+
+      header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 2px;
+      }
+
+      button {
+        width: 24px;
+        height: 24px;
+        flex: none;
+        border: 1px solid rgba(232, 234, 240, 0.35);
+        border-radius: 4px;
+        background: transparent;
+        color: inherit;
+        font-size: 13px;
+        line-height: 1;
+        cursor: pointer;
+
+        &:hover:not(:disabled) {
+          background: rgba(232, 234, 240, 0.15);
+        }
+
+        &:disabled {
+          opacity: 0.3;
+          cursor: default;
+        }
+      }
+    }
+
+    .viz-stage-counter {
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      opacity: 0.7;
+    }
+
+    .viz-stage-title {
+      margin: 0;
+      font-size: 15px;
+    }
+
+    .viz-stage-caption {
+      margin: 3px 0 0;
+      font-size: 12px;
+      line-height: 1.45;
+      opacity: 0.88;
+    }
+
+    .viz-stages.is-folded .viz-stage-caption {
+      display: none;
+    }
+
+    /* the fold button sits at the far end of the header, away from the arrows */
+    .viz-stage-fold {
+      margin-left: auto;
+    }
+
     .viz-hud {
       position: absolute;
       top: 12px;
@@ -281,6 +352,11 @@ main {
 
       label {
         font-weight: bold;
+      }
+
+      select {
+        font: inherit;
+        padding: 3px 6px;
       }
     }
   }
@@ -475,6 +551,21 @@ main {
     }
 
     .viz-label {
+      font-size: 11px;
+    }
+
+    .viz-stages {
+      left: 8px;
+      right: 8px;
+      bottom: 8px;
+      padding: 7px 9px;
+    }
+
+    .viz-stage-title {
+      font-size: 13px;
+    }
+
+    .viz-stage-caption {
       font-size: 11px;
     }
   }

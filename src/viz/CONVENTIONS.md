@@ -64,7 +64,25 @@ look at things) and one `SceneCamera` (whose field of view is the subject).
   applies the world matrix, so a wireframe cube really is just the twelve edges
   of a unit cube.
 
-## Lines
+## Two kinds of geometry
+
+There are two ways to put a shape in a scene, and which one a demo wants
+depends on whether the shape is the subject:
+
+* `MeshNode` draws a named primitive - `"box"`, `"plane"`, `"sphere"` - built
+  straight into GPU buffers by `primitives.ts`. Use it for everything that is
+  there to be looked past: scenery, stand-ins, the tree behind the thing.
+* `GeometryNode` draws a `TriangleMesh`: an explicit list of vertices and an
+  explicit list of triangles, which it can show as dots, as edges, as filled
+  surfaces, as normals, or as the first *n* triangles of the list. Use it when
+  the vertices and triangles are the lesson.
+
+A `TriangleMesh` stores texture coordinates **per corner of each triangle**,
+not per vertex. A cube really is eight points; a cube with a picture on each
+face needs three different texture coordinates at each corner, and keeping
+those with the triangles is what lets both statements stay true.
+
+## Lines and points
 
 * **Scenery uses `collector.lines`; gizmos use `collector.seeThroughLines`.**
   The second kind still shows, faintly, where something solid is in front of
@@ -73,6 +91,9 @@ look at things) and one `SceneCamera` (whose field of view is the subject).
 * Line width is in **pixels** and is the same at any distance. Browsers clamp
   `gl.lineWidth` to 1, so every segment is drawn as a screen-space quad
   instead - which is why `LineBatch` is instanced.
+* `collector.points` draws round dots, sized in pixels, for when a vertex
+  itself is the subject. These do go through `gl.POINTS`, because
+  `gl_PointSize` is honoured where `gl.lineWidth` is not.
 
 ## Input
 
@@ -114,3 +135,25 @@ Two things to know when wiring one up:
 What the detached view reveals is the demo's own conventions, honestly. A
 shader that defines its light in view space turns out to have a headlight
 that follows whichever camera is rendering - which is a lesson, not a bug.
+
+## Steps
+
+`Playground.useStages()` turns a demo into a sequence of captioned steps,
+reachable with the arrow keys, with the arrows in the panel, or from the picker
+in the controls panel. The callback is handed the step's index and is expected
+to put the scene into that state completely, rather than undoing whatever the
+previous step did - stepping backwards and jumping straight to the last step
+have to work as well as walking forwards does.
+
+After each step the controls panel is rebuilt from `params`, so a step can
+offer exactly the sliders it is about. A demo that changes its own controls
+for any other reason calls `refreshParams()` itself.
+
+## Pixels
+
+`Playground.pixelSize` renders the frame into a buffer that many times smaller
+and scales it back up with nearest sampling. It is the one deliberately wrong
+picture in the library: at 1 nothing happens, and at 8 the scene is made of
+squares you can count, which is the only way to show what a rasteriser does.
+Line widths and the inset are laid out against the small buffer, so everything
+in the frame is pixelated together.

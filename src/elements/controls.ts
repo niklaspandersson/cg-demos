@@ -45,12 +45,31 @@ export function toControl(param: ParameterDescriptor) {
     const checked = param.initial === true ? " checked" : "";
     el.innerHTML = `<label for="${id}">${title}:</label>
     <input type="checkbox" id="${id}" name="${id}"${checked}>`;
+  } else if (param.type === "select") {
+    const options = param.options ?? [];
+    const choices = options
+      .map((option) => {
+        const selected = String(option.value) === String(param.initial) ? " selected" : "";
+        return `<option value="${option.value}"${selected}>${option.label}</option>`;
+      })
+      .join("");
+
+    el.innerHTML = `<label for="${id}">${title}:</label>
+    <select id="${id}" name="${id}">${choices}</select>`;
   }
 
   if (param.type === "color") {
     el.querySelector("input")?.addEventListener("input", (e: Event) => {
       let value: any = (e.target as HTMLInputElement).value;
       param.update(toRGB(value));
+    });
+  } else if (param.type === "select") {
+    el.querySelector("select")?.addEventListener("change", (e: Event) => {
+      // Option values are strings in the DOM; a numeric one is handed back as
+      // a number, because that is what the descriptor said it was.
+      const raw = (e.target as HTMLSelectElement).value;
+      const numeric = Number(raw);
+      param.update(raw !== "" && !Number.isNaN(numeric) ? numeric : raw);
     });
   } else {
     el.querySelector("input")?.addEventListener("input", (e: Event) => {

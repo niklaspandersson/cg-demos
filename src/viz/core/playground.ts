@@ -7,6 +7,8 @@ import { VizRenderer } from "../render/renderer";
 import { Hud } from "../ui/hud";
 import { LabelOverlay, type LabelOptions, type LabelTarget } from "../ui/labels";
 import { pickNode } from "../ui/picking";
+import { Stages, type Stage, type StagesOptions } from "../ui/stages";
+import { PixelSurface } from "../render/pixels";
 import { readViewFromUrl, viewChanged, writeViewToUrl } from "../ui/viewlink";
 import type { Node } from "./node";
 import { VizScene } from "./scene";
@@ -47,9 +49,18 @@ export abstract class Playground implements GLScene {
   /** Keep the viewpoint in the address bar, so a view can be linked to. */
   shareViewInUrl = true;
 
+  /**
+   * Draw the frame into a buffer this many times smaller than the canvas and
+   * blow it back up. 1 is the normal full resolution picture; 8 is a scene made
+   * of visible pixels, which is the only honest way to show rasterisation.
+   */
+  pixelSize = 1;
+
   #inset: { camera: SceneCamera; widthFraction: number } | null = null;
   #labels: LabelOverlay | null = null;
   #hud: Hud | null = null;
+  #stages: Stages | null = null;
+  #pixels: PixelSurface | null = null;
   #surface: HTMLElement | null = null;
   #canvas: HTMLCanvasElement | null = null;
   #viewProjection = mat4.create();
@@ -67,6 +78,8 @@ export abstract class Playground implements GLScene {
     const renderer = new VizRenderer(ctx.gl);
     await renderer.init();
     this.#renderer = renderer;
+    this.#pixels = new PixelSurface(ctx.gl);
+    await this.#pixels.init();
 
     ctx.clearColor = this.background;
 
@@ -102,9 +115,31 @@ export abstract class Playground implements GLScene {
    * The nodes a demo bothered to name. Those are the ones worth listing in
    * the legend and worth flying to when you click in the scene; unnamed
    * scenery would only be noise.
+   *
+   * Hidden subtrees are left out: a name in the legend that flies the viewer to
+   * something it cannot see is worse than no entry at all, and a demo built as
+   * a sequence of steps hides most of itself most of the time.
    */
   interesting(): Node[] {
-    return [...this.scene.walk()].filter((node) => node !== this.scene && node.named);
+    const found: Node[] = [];
+
+    const visit = (node: Node) => {
+      if (!node.visible) return;
+      if (node !== this.scene && node.named) found.push(node);
+      for (const child of node.children) visit(child);
+    };
+    visit(this.scene);
+
+    return found;
+  }
+
+  /**
+   * Rebuild the legend from what is in the scene now. Needed after a demo shows
+   * or hides part of itself; the legend is built once otherwise.
+   */
+  refreshLegend() {
+    this.scene.update();
+    this.#hud?.setEntries(this.interesting());
   }
 
   /**
@@ -114,6 +149,47 @@ export abstract class Playground implements GLScene {
    */
   label(text: string, target: LabelTarget, options: LabelOptions = {}) {
     return this.#labels?.add(text, target, options) ?? null;
+  }
+
+  /**
+   * Turn this demo into a sequence of steps, with a caption panel over the
+   * scene and the arrow keys stepping through it.
+   *
+   * Call it from `setup()`. `onChange` gets the new step's index and is
+   * expected to put the scene into that state; it is also called for the
+   * starting step, so one function describes every step and nothing has to be
+   * undone. The controls panel is rebuilt afterwards, so each step can offer
+   * its own sliders.
+   */
+  useStages(
+    stages: readonly Stage[],
+    onChange: (index: number) => void,
+    options: StagesOptions = {},
+  ): Stages {
+    if (!this.#surface) throw new Error("useStages() needs the playground to have started");
+
+    this.#stages?.dispose();
+    const controller = new Stages(
+      this.#surface,
+      stages,
+      (index) => {
+        onChange(index);
+        this.refreshParams();
+      },
+      options,
+    );
+
+    this.#stages = controller;
+    onChange(controller.index);
+    return controller;
+  }
+
+  /**
+   * Ask the surrounding page to read `params` again. A demo needs this when its
+   * controls depend on something the viewer just changed.
+   */
+  refreshParams() {
+    this.#canvas?.dispatchEvent(new CustomEvent("scene-params", { bubbles: true }));
   }
 
   #onDoubleClick = (e: MouseEvent) => {
@@ -141,7 +217,15 @@ export abstract class Playground implements GLScene {
     this.update(dt, time);
     this.scene.update();
 
-    const { drawingBufferWidth: width, drawingBufferHeight: height } = ctx.gl;
+    const { drawingBufferWidth: canvasWidth, drawingBufferHeight: canvasHeight } = ctx.gl;
+
+    // At a pixel size above 1 everything below draws into a smaller buffer, so
+    // the frame is laid out against *that* size - including the inset, whose
+    // corner is a fraction of the picture, not of the canvas.
+    const target =
+      this.#pixels?.begin(canvasWidth, canvasHeight, this.pixelSize, this.background) ?? null;
+    const width = target?.width ?? canvasWidth;
+    const height = target?.height ?? canvasHeight;
     const aspect = height > 0 ? width / height : 1;
 
     const view = this.viewer.viewMatrix();
@@ -149,7 +233,9 @@ export abstract class Playground implements GLScene {
     mat4.multiply(this.#viewProjection, projection, view);
 
     renderer.render(this.scene, view, projection);
-    this.#renderInset(ctx, renderer);
+    this.#renderInset(ctx, renderer, width, height);
+
+    if (target) this.#pixels?.end(canvasWidth, canvasHeight);
 
     const canvas = ctx.gl.canvas as HTMLCanvasElement;
     this.#labels?.update(this.#viewProjection, canvas.clientWidth, canvas.clientHeight);
@@ -190,12 +276,11 @@ export abstract class Playground implements GLScene {
     return this;
   }
 
-  #renderInset(ctx: GLContext, renderer: VizRenderer) {
+  #renderInset(ctx: GLContext, renderer: VizRenderer, width: number, height: number) {
     const inset = this.#inset;
     if (!inset) return;
 
     const gl = ctx.gl;
-    const { drawingBufferWidth: width, drawingBufferHeight: height } = gl;
 
     // The inset takes the camera's own aspect ratio: it is that camera's
     // image, so letterboxing it would be a lie.
@@ -234,10 +319,14 @@ export abstract class Playground implements GLScene {
     this.controls.dispose();
     this.#labels?.dispose();
     this.#hud?.dispose();
+    this.#stages?.dispose();
+    this.#pixels?.dispose();
     this.#renderer?.dispose();
 
     this.#labels = null;
     this.#hud = null;
+    this.#stages = null;
+    this.#pixels = null;
     this.#canvas = null;
     this.#surface = null;
     this.#renderer = null;

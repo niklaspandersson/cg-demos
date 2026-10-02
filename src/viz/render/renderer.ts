@@ -2,8 +2,10 @@ import { mat3, mat4, vec3 } from "gl-matrix";
 import type { GLSLProgram } from "../../gl/program";
 import type { Node } from "../core/node";
 import { LineBatch } from "./lines";
+import { PointBatch } from "./points";
 import { GpuMesh, type MeshData } from "./mesh";
-import { createLineProgram, createSurfaceProgram } from "./programs";
+import { createLineProgram, createPointProgram, createSurfaceProgram } from "./programs";
+import { whiteTexture } from "./textures";
 import type { Collector, LightInfo, MeshOptions } from "./collector";
 import { rgba, type Color } from "../types";
 
@@ -15,6 +17,8 @@ type MeshItem = {
   world: mat4;
   color: [number, number, number, number];
   unlit: boolean;
+  texture: WebGLTexture | null;
+  textureScale: readonly [number, number];
   /** view space depth, only used to sort the transparent ones */
   depth: number;
 };
@@ -31,10 +35,24 @@ export class VizRenderer {
   #gl: WebGL2RenderingContext;
   #lines: LineBatch;
   #seeThrough: LineBatch;
+  #points: PointBatch;
   #lineProgram: GLSLProgram | null = null;
   #surfaceProgram: GLSLProgram | null = null;
+  #pointProgram: GLSLProgram | null = null;
+  #white: WebGLTexture | null = null;
 
   ambient = 0.35;
+
+  /**
+   * Whether to throw away triangles that face away from the camera, and
+   * whether to let the depth buffer decide what is in front.
+   *
+   * Both are on in any real renderer and are switches here because turning
+   * them off is the clearest way to show what they do. The scene re-applies
+   * them every frame, so a demo can toggle them from a checkbox.
+   */
+  cullBackFaces = false;
+  depthTest = true;
 
   /**
    * How brightly to draw the parts of lines that are hidden behind something.
@@ -74,11 +92,20 @@ export class VizRenderer {
     this.#gl = gl;
     this.#lines = new LineBatch(gl);
     this.#seeThrough = new LineBatch(gl);
+    this.#points = new PointBatch(gl);
   }
 
   async init() {
     this.#lineProgram = await createLineProgram(this.#gl);
     this.#surfaceProgram = await createSurfaceProgram(this.#gl);
+    this.#pointProgram = await createPointProgram(this.#gl);
+    this.#white = whiteTexture(this.#gl);
+
+    // Samplers are integers, and the uniform helper only sets floats, so the
+    // one sampler in the library is pointed at texture unit 0 here, once.
+    this.#surfaceProgram.use();
+    const sampler = this.#surfaceProgram.getUniformLocation("uTexture");
+    if (sampler) this.#gl.uniform1i(sampler, 0);
   }
 
   /**
@@ -103,20 +130,36 @@ export class VizRenderer {
     this.#lights.length = 0;
     this.#lines.clear();
     this.#seeThrough.clear();
+    this.#points.clear();
 
     this.#collect(root, view, options.skip);
 
-    gl.enable(gl.DEPTH_TEST);
+    if (this.depthTest) gl.enable(gl.DEPTH_TEST);
+    else gl.disable(gl.DEPTH_TEST);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-    // Line quads are wound whichever way the segment happens to run on
-    // screen, and surfaces here are lit on both sides, so face culling would
-    // only make gizmos disappear. A demo that turned it on keeps its own
-    // setting - it re-applies it every frame.
-    gl.disable(gl.CULL_FACE);
+    // Line quads are wound whichever way the segment happens to run on screen,
+    // so culling is turned off again before they are drawn, below. Surfaces get
+    // it when a demo asks: a cube with its back faces thrown away is how you
+    // show that a triangle has a front.
+    if (this.cullBackFaces) {
+      gl.enable(gl.CULL_FACE);
+      gl.cullFace(gl.BACK);
+    } else {
+      gl.disable(gl.CULL_FACE);
+    }
+
+    // Nudge filled triangles a hair away from the camera in depth, so the
+    // wireframe drawn on top of them is not in a coin toss with the surface it
+    // outlines. Without this, edges drawn over their own faces sparkle.
+    gl.enable(gl.POLYGON_OFFSET_FILL);
+    gl.polygonOffset(1, 1);
 
     this.#drawMeshes(this.#opaque, viewProjection);
+
+    gl.disable(gl.POLYGON_OFFSET_FILL);
+    gl.disable(gl.CULL_FACE);
 
     // Lines are opaque and write depth, so they go before the transparent
     // pass: a glass plane should tint the grid behind it, and be hidden by a
@@ -129,11 +172,19 @@ export class VizRenderer {
     gl.depthMask(false);
     this.#drawMeshes(this.#transparent, viewProjection);
     gl.depthMask(true);
+
+    // Vertex dots go last and do not write depth, so a dot sitting exactly on
+    // a surface it belongs to still shows instead of z-fighting with it.
+    this.#drawPoints(viewProjection);
+
+    gl.enable(gl.DEPTH_TEST);
   }
 
   dispose() {
     this.#lines.dispose();
     this.#seeThrough.dispose();
+    this.#points.dispose();
+    if (this.#white) this.#gl.deleteTexture(this.#white);
     for (const mesh of this.#meshCache.values()) mesh.dispose();
     this.#meshCache.clear();
   }
@@ -144,6 +195,7 @@ export class VizRenderer {
     const collector: Collector = {
       lines: this.#lines,
       seeThroughLines: this.#seeThrough,
+      points: this.#points,
       geometry: (key, build) => this.mesh(key, build),
       light: (info: LightInfo) => this.#lights.push(info),
       mesh: (mesh: GpuMesh, color: Color, options: MeshOptions = {}) => {
@@ -165,6 +217,8 @@ export class VizRenderer {
           world,
           color: rgbaColor,
           unlit: options.unlit ?? false,
+          texture: options.texture ?? null,
+          textureScale: options.textureScale ?? [1, 1],
           depth,
         };
         (rgbaColor[3] < 1 ? this.#transparent : this.#opaque).push(item);
@@ -175,9 +229,11 @@ export class VizRenderer {
     // space so a wireframe cube is just the edges of a unit cube.
     this.#lines.transform = node.worldMatrix;
     this.#seeThrough.transform = node.worldMatrix;
+    this.#points.transform = node.worldMatrix;
     node.collect(collector);
     this.#lines.transform = null;
     this.#seeThrough.transform = null;
+    this.#points.transform = null;
 
     for (const child of node.children) this.#collect(child, view, skip);
   }
@@ -192,7 +248,10 @@ export class VizRenderer {
     const uniforms = this.#lineProgram!.use();
     uniforms.uViewProjection = viewProjection;
     uniforms.uThickness = this.#lines.thickness;
-    uniforms.uHalfViewport = [gl.drawingBufferWidth / 2, gl.drawingBufferHeight / 2];
+    // The viewport, not the canvas: a pass that renders into a smaller buffer
+    // would otherwise get lines several times too wide.
+    const viewport = gl.getParameter(gl.VIEWPORT) as Int32Array;
+    uniforms.uHalfViewport = [viewport[2] / 2, viewport[3] / 2];
 
     // The hidden parts of the gizmos first, faintly, with the depth test
     // inverted. They must not write depth, or they would hide the pass that
@@ -209,6 +268,28 @@ export class VizRenderer {
     uniforms.uOpacity = 1;
     this.#lines.draw();
     this.#seeThrough.draw();
+  }
+
+  #drawPoints(viewProjection: mat4) {
+    const gl = this.#gl;
+    if (this.#points.pointCount === 0) return;
+
+    this.#points.upload();
+
+    const uniforms = this.#pointProgram!.use();
+    uniforms.uViewProjection = viewProjection;
+
+    gl.depthMask(false);
+    if (this.xray > 0) {
+      gl.depthFunc(gl.GREATER);
+      uniforms.uOpacity = Math.max(this.xray, 0.35);
+      this.#points.draw();
+      gl.depthFunc(gl.LEQUAL);
+    }
+
+    uniforms.uOpacity = 1;
+    this.#points.draw();
+    gl.depthMask(true);
   }
 
   /**
@@ -244,13 +325,24 @@ export class VizRenderer {
     uniforms.uAmbient = this.ambient;
     this.#applyLights(uniforms);
 
+    const gl = this.#gl;
     const normalMatrix = mat3.create();
+    gl.activeTexture(gl.TEXTURE0);
+
     for (const item of items) {
       mat3.normalFromMat4(normalMatrix, item.world);
       uniforms.uModel = item.world;
       uniforms.uNormalMatrix = normalMatrix;
       uniforms.uColor = item.color;
       uniforms.uUnlit = item.unlit ? 1 : 0;
+      uniforms.uVertexColor = item.mesh.hasColors ? 1 : 0;
+
+      // Something is always bound, so the shader can multiply by the texture
+      // unconditionally; white leaves an untextured surface exactly as it was.
+      uniforms.uTextured = item.texture ? 1 : 0;
+      uniforms.uTexScale = item.textureScale as unknown as number[];
+      gl.bindTexture(gl.TEXTURE_2D, item.texture ?? this.#white);
+
       item.mesh.draw();
     }
   }

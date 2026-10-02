@@ -1,14 +1,21 @@
 import { GLContext } from "./context";
 import { GLSLProgram, type RebuildResult } from "./program";
 
+type ParameterOption = {
+  label: string;
+  value: number | string;
+};
+
 type ParameterDescriptor = {
   title: string;
   description?: string;
-  type: "number" | "color" | "boolean";
+  type: "number" | "color" | "boolean" | "select";
   min?: number;
   max?: number;
   step?: number;
-  initial?: number | boolean | [number, number, number];
+  initial?: number | string | boolean | [number, number, number];
+  /** The choices, for a "select". */
+  options?: ParameterOption[];
   update: (value: any) => void;
 };
 
@@ -20,6 +27,11 @@ interface GLScene {
     time: number,
   ) => void | PromiseLike<void>;
 
+  /**
+   * The controls shown beside the scene. Read when the scene loads, and again
+   * whenever the scene dispatches a "scene-params" event - a demo whose
+   * controls depend on which step it is showing needs the second one.
+   */
   params?: ParameterDescriptor[];
 
   /**
@@ -39,4 +51,11 @@ interface GLScene {
   dispose?: () => void;
 }
 
-export { GLContext, GLSLProgram, type GLScene, type ParameterDescriptor, type RebuildResult };
+export {
+  GLContext,
+  GLSLProgram,
+  type GLScene,
+  type ParameterDescriptor,
+  type ParameterOption,
+  type RebuildResult,
+};

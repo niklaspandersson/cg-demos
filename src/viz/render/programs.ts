@@ -1,7 +1,7 @@
 import { GLSLProgram } from "../../gl/program";
 
 /**
- * The two shaders the playground draws everything with.
+ * The four shaders the playground draws everything with.
  *
  * They are built directly instead of through `GLContext.createProgram` on
  * purpose: these belong to the library, not to the lesson, so they stay out of
@@ -71,19 +71,28 @@ void main() {
 const SURFACE_VS = `#version 300 es
 in vec3 aPosition;
 in vec3 aNormal;
+in vec4 aColor;    // only present when the geometry colours itself per face
+in vec2 aTexCoord;
 
 uniform mat4 uModel;
 uniform mat4 uViewProjection;
 uniform mat3 uNormalMatrix;
+uniform float uVertexColor; // 1.0 when aColor carries something
 
 out vec3 vNormal;
 out vec3 vWorldPosition;
+out vec4 vColor;
+out vec2 vUv;
 
 void main() {
   vec4 world = uModel * vec4(aPosition, 1.0);
 
   vNormal = uNormalMatrix * aNormal;
   vWorldPosition = world.xyz;
+  // A disabled attribute reads as (0, 0, 0, 1), which would turn every
+  // surface black, so the flag decides whether aColor is believed.
+  vColor = mix(vec4(1.0), aColor, uVertexColor);
+  vUv = aTexCoord;
   gl_Position = uViewProjection * world;
 }
 `;
@@ -93,6 +102,9 @@ precision highp float;
 
 in vec3 vNormal;
 in vec3 vWorldPosition;
+
+in vec4 vColor;
+in vec2 vUv;
 
 uniform vec4 uColor;
 uniform float uAmbient;
@@ -112,6 +124,10 @@ uniform vec3 uSpotPosition;
 uniform vec3 uSpotDirection;
 uniform float uSpotRange;
 uniform vec2 uSpotCone;             // cos(outer), cos(inner)
+
+uniform sampler2D uTexture;
+uniform float uTextured;            // 0 leaves the flat colour alone
+uniform vec2 uTexScale;             // how many times the image repeats
 
 out vec4 fragColor;
 
@@ -147,8 +163,76 @@ void main() {
     * cone
     * attenuation(spotDistance, uSpotRange);
 
-  vec3 shaded = mix(uColor.rgb * light, uColor.rgb, uUnlit);
-  fragColor = vec4(shaded, uColor.a);
+  // What the surface is made of, before any light reaches it: the node's
+  // colour, the geometry's own per-face colour, and the texture, in that order.
+  vec4 base = uColor * vColor;
+  vec3 albedo = base.rgb * mix(vec3(1.0), texture(uTexture, vUv * uTexScale).rgb, uTextured);
+
+  vec3 shaded = mix(albedo * light, albedo, uUnlit);
+  fragColor = vec4(shaded, base.a);
+}
+`;
+
+const POINT_VS = `#version 300 es
+// One vertex per dot. gl_PointSize is in pixels and is honoured here, unlike
+// gl.lineWidth, so a vertex marker needs no geometry of its own.
+in vec3 aPosition;
+in vec4 aColor;
+in vec2 aTexCoord; // x: diameter in pixels
+
+uniform mat4 uViewProjection;
+
+out vec4 vColor;
+
+void main() {
+  vColor = aColor;
+  gl_PointSize = aTexCoord.x;
+  gl_Position = uViewProjection * vec4(aPosition, 1.0);
+}
+`;
+
+const POINT_FS = `#version 300 es
+precision highp float;
+
+in vec4 vColor;
+
+uniform float uOpacity;
+
+out vec4 fragColor;
+
+void main() {
+  // gl_PointCoord runs 0..1 across the square the point is drawn in, so this
+  // throws away the corners and leaves a round dot with a soft edge.
+  float distance = length(gl_PointCoord - 0.5);
+  float alpha = 1.0 - smoothstep(0.42, 0.5, distance);
+  if (alpha <= 0.0) discard;
+
+  fragColor = vec4(vColor.rgb, vColor.a * alpha * uOpacity);
+}
+`;
+
+const BLIT_VS = `#version 300 es
+// One triangle big enough to cover the screen, built from nothing but the
+// vertex index - no buffers, no attributes, no vertex array to bind.
+out vec2 vUv;
+
+void main() {
+  vec2 corner = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
+  vUv = corner;
+  gl_Position = vec4(corner * 2.0 - 1.0, 0.0, 1.0);
+}
+`;
+
+const BLIT_FS = `#version 300 es
+precision highp float;
+
+in vec2 vUv;
+uniform sampler2D uTexture;
+
+out vec4 fragColor;
+
+void main() {
+  fragColor = texture(uTexture, vUv);
 }
 `;
 
@@ -163,3 +247,9 @@ export const createLineProgram = (gl: WebGL2RenderingContext) =>
 
 export const createSurfaceProgram = (gl: WebGL2RenderingContext) =>
   buildProgram(gl, SURFACE_VS, SURFACE_FS);
+
+export const createPointProgram = (gl: WebGL2RenderingContext) =>
+  buildProgram(gl, POINT_VS, POINT_FS);
+
+export const createBlitProgram = (gl: WebGL2RenderingContext) =>
+  buildProgram(gl, BLIT_VS, BLIT_FS);

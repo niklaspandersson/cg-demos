@@ -1,5 +1,6 @@
 import type { mat4 } from "gl-matrix";
 import type { LineBatch } from "./lines";
+import type { PointBatch } from "./points";
 import type { GpuMesh, MeshData } from "./mesh";
 import type { Color } from "../types";
 
@@ -8,6 +9,10 @@ export type MeshOptions = {
   unlit?: boolean;
   /** Extra transform applied inside the node's own space. */
   local?: mat4;
+  /** An image to multiply the colour by. Needs geometry with uvs. */
+  texture?: WebGLTexture | null;
+  /** How many times that image repeats across the uv square. */
+  textureScale?: readonly [number, number];
 };
 
 /**
@@ -46,6 +51,13 @@ export interface Collector {
    * explanation you cannot see because a box is in the way explains nothing.
    */
   readonly seeThroughLines: LineBatch;
+
+  /**
+   * Round dots, in the collecting node's local space. This is how a vertex is
+   * drawn when the vertex itself, rather than the surface it belongs to, is
+   * the subject.
+   */
+  readonly points: PointBatch;
 
   /**
    * Shared GPU geometry, uploaded the first time a given key is asked for.

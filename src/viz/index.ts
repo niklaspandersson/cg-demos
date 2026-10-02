@@ -22,6 +22,7 @@ export {
 } from "./camera/controls";
 
 export { MeshNode, type MeshNodeOptions, type Shape } from "./entities/meshnode";
+export { GeometryNode, type GeometryNodeOptions } from "./entities/geometrynode";
 export { LineNode, type LineNodeOptions } from "./entities/linenode";
 
 export {
@@ -54,13 +55,32 @@ export {
   type Plane,
 } from "./gizmos/frustum";
 
+export {
+  TriangleMesh,
+  type TriangleMeshOptions,
+  type Triangle,
+  type Vertex,
+  type Shading,
+  type UV,
+} from "./geometry/trimesh";
+
 export { VizRenderer } from "./render/renderer";
 export { LineBatch } from "./render/lines";
+export { PointBatch } from "./render/points";
+export { PixelSurface } from "./render/pixels";
+export {
+  checkerTexture,
+  whiteTexture,
+  fromCanvas,
+  setFiltering,
+  type CheckerOptions,
+} from "./render/textures";
 export { GpuMesh, type MeshData } from "./render/mesh";
 export type { Collector, MeshOptions, LightInfo } from "./render/collector";
 
 export { LabelOverlay, type Label, type LabelOptions, type LabelTarget } from "./ui/labels";
 export { Hud } from "./ui/hud";
+export { Stages, type Stage, type StagesOptions } from "./ui/stages";
 export { pickNode } from "./ui/picking";
 export { readViewFromUrl, writeViewToUrl } from "./ui/viewlink";
 

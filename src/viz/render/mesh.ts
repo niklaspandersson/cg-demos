@@ -9,6 +9,10 @@ export type MeshData = {
   positions: number[];
   /** 3 floats per vertex, optional for geometry that is never lit */
   normals?: number[];
+  /** 2 floats per vertex, only needed for geometry that carries a texture */
+  uvs?: number[];
+  /** 4 floats per vertex, for geometry that colours itself face by face */
+  colors?: number[];
   indices: number[];
 };
 
@@ -24,10 +28,17 @@ export class GpuMesh {
   #vao: WebGLVertexArrayObject;
   #buffers: WebGLBuffer[] = [];
   #indexCount: number;
+  #hasColors: boolean;
+
+  /** True when the geometry brought its own colours, so the shader uses them. */
+  get hasColors() {
+    return this.#hasColors;
+  }
 
   constructor(gl: WebGL2RenderingContext, data: MeshData) {
     this.#gl = gl;
     this.#indexCount = data.indices.length;
+    this.#hasColors = data.colors !== undefined;
 
     const vao = gl.createVertexArray();
     if (!vao) throw new Error("Failed to create vertex array object");
@@ -37,6 +48,8 @@ export class GpuMesh {
     this.#attribute(STANDARD_ATTRIB_LOCATIONS.aPosition, data.positions, 3);
     if (data.normals)
       this.#attribute(STANDARD_ATTRIB_LOCATIONS.aNormal, data.normals, 3);
+    if (data.colors) this.#attribute(STANDARD_ATTRIB_LOCATIONS.aColor, data.colors, 4);
+    if (data.uvs) this.#attribute(STANDARD_ATTRIB_LOCATIONS.aTexCoord, data.uvs, 2);
 
     const indexBuffer = gl.createBuffer();
     if (!indexBuffer) throw new Error("Failed to create index buffer");

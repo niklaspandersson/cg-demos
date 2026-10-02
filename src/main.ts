@@ -10,16 +10,26 @@ const shaderEditor = document.querySelector<ShaderEditor>("shader-editor");
 
 let currentSceneId = "";
 
+function showControls(scene: GLScene | null) {
+  const params = scene?.params ?? [];
+  document.querySelector(".controls")?.replaceChildren(...params.map(toControl));
+}
+
+/**
+ * A demo whose controls change while it runs - one built as a sequence of
+ * steps, where each step has its own sliders - says so by dispatching this.
+ * The event bubbles out of the canvas, so the scene needs to know nothing
+ * about the panel it is asking to be rebuilt.
+ */
+sceneView?.addEventListener("scene-params", () => {
+  showControls((sceneView as unknown as { currentScene: GLScene | null }).currentScene);
+});
+
 sceneView?.addEventListener("scene-loaded", ((e: CustomEvent) => {
   const scene: GLScene = e.detail.scene;
   const programs: readonly GLSLProgram[] = e.detail.programs ?? [];
 
-  if (scene) {
-    const params = scene.params || [];
-    document
-      .querySelector(".controls")
-      ?.replaceChildren(...params.map(toControl));
-  }
+  if (scene) showControls(scene);
 
   if (shaderEditor) {
     if (programs.length > 0) {

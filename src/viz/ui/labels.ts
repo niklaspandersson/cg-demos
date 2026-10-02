@@ -9,12 +9,19 @@ export type LabelOptions = {
   color?: Color;
   /** Nudge in world units, to keep the text off the thing it names. */
   offset?: Vec3Like;
+  visible?: boolean;
 };
 
 export type Label = {
   element: HTMLElement;
   target: LabelTarget;
   offset: vec3;
+  /**
+   * Set this to false to hide the label without losing it. A demo built as a
+   * sequence of steps makes all of its labels once and shows the handful that
+   * belong to the step on screen.
+   */
+  visible: boolean;
   remove: () => void;
 };
 
@@ -56,6 +63,7 @@ export class LabelOverlay {
       element,
       target,
       offset: options.offset ? vec3.clone(options.offset as vec3) : vec3.create(),
+      visible: options.visible ?? true,
       remove: () => this.remove(label),
     };
 
@@ -79,6 +87,11 @@ export class LabelOverlay {
   /** Project every label to where its point lands on screen. */
   update(viewProjection: mat4, cssWidth: number, cssHeight: number) {
     for (const label of this.#labels) {
+      if (!label.visible) {
+        label.element.style.display = "none";
+        continue;
+      }
+
       this.#resolve(label);
 
       vec4.set(this.#clip, this.#world[0], this.#world[1], this.#world[2], 1);
